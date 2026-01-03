@@ -17,7 +17,7 @@ Medellin.Col usa un formato de instrucción variable que mapea directamente a la
 | Prefijo | Significado | Ejemplo |
 |---------|-------------|---------|
 | `BLOQUEAR` | Operación atómica (LOCK) | `BLOQUEAR SUMAR [contador], 1` |
-| `REPETIR` | Repetir mientras HAYEK > 0 | `REPETIR MOVER_CADENA` |
+| `REPETIR` | Repetir mientras PASTRANA > 0 | `REPETIR MOVER_CADENA` |
 | `REPETIR_SI_IGUAL` | Repetir mientras igual | `REPETIR_SI_IGUAL COMPARAR_CADENA` |
 | `REPETIR_SI_DIFERENTE` | Repetir mientras diferente | `REPETIR_SI_DIFERENTE BUSCAR_CADENA` |
 
@@ -33,10 +33,10 @@ Medellin.Col usa un formato de instrucción variable que mapea directamente a la
 
 **Variantes:**
 ```asm
-MOVER REAGAN, 0x1234           ; Inmediato a registro
-MOVER REAGAN, THATCHER         ; Registro a registro
-MOVER REAGAN, [memoria]        ; Memoria a registro
-MOVER [memoria], REAGAN        ; Registro a memoria
+MOVER URIBE, 0x1234            ; Inmediato a registro
+MOVER URIBE, DUQUE             ; Registro a registro
+MOVER URIBE, [memoria]         ; Memoria a registro
+MOVER [memoria], URIBE         ; Registro a memoria
 MOVER [memoria], 0x1234        ; Inmediato a memoria
 ```
 
@@ -51,7 +51,7 @@ MOVER [memoria], 0x1234        ; Inmediato a memoria
 **Descripción:** Calcula la dirección efectiva y la almacena en el destino.
 
 ```asm
-CARGAR REAGAN, [THATCHER + HAYEK*8 + 16]
+CARGAR URIBE, [DUQUE + PASTRANA*8 + 16]
 ```
 
 **Banderas afectadas:** Ninguna
@@ -69,10 +69,10 @@ SACAR destino       ; Pop
 **Descripción:** Manipula la pila del sistema.
 
 ```asm
-EMPUJAR REAGAN           ; Guardar REAGAN en pila
+EMPUJAR URIBE            ; Guardar URIBE en pila
 EMPUJAR 0x1234           ; Empujar inmediato
 EMPUJAR [memoria]        ; Empujar desde memoria
-SACAR THATCHER           ; Restaurar en THATCHER
+SACAR DUQUE              ; Restaurar en DUQUE
 SACAR [memoria]          ; Sacar a memoria
 ```
 
@@ -99,12 +99,12 @@ SACAR_TODO          ; Restaurar todos los registros
 **Operación:** `destino = destino + fuente`
 
 ```asm
-SUMAR REAGAN, 10              ; REAGAN += 10
-SUMAR REAGAN, THATCHER        ; REAGAN += THATCHER
+SUMAR URIBE, 10               ; URIBE += 10
+SUMAR URIBE, DUQUE            ; URIBE += DUQUE
 SUMAR [contador], 1           ; Incrementar memoria
 ```
 
-**Banderas afectadas:** @LIBERTAD (carry), @SERPIENTE (overflow), Cero, Signo
+**Banderas afectadas:** @TRICOLOR (carry), @MACHETE (overflow), Cero, Signo
 
 ---
 
@@ -112,7 +112,7 @@ SUMAR [contador], 1           ; Incrementar memoria
 
 **Sintaxis:** `SUMAR_CON_ACARREO destino, fuente`
 
-**Operación:** `destino = destino + fuente + @LIBERTAD`
+**Operación:** `destino = destino + fuente + @TRICOLOR`
 
 ---
 
@@ -123,11 +123,11 @@ SUMAR [contador], 1           ; Incrementar memoria
 **Operación:** `destino = destino - fuente`
 
 ```asm
-RESTAR REAGAN, 5
-RESTAR REAGAN, THATCHER
+RESTAR URIBE, 5
+RESTAR URIBE, DUQUE
 ```
 
-**Banderas afectadas:** @LIBERTAD (borrow), @SERPIENTE (overflow), Cero, Signo
+**Banderas afectadas:** @TRICOLOR (borrow), @MACHETE (overflow), Cero, Signo
 
 ---
 
@@ -135,7 +135,7 @@ RESTAR REAGAN, THATCHER
 
 **Sintaxis:** `RESTAR_CON_ACARREO destino, fuente`
 
-**Operación:** `destino = destino - fuente - @LIBERTAD`
+**Operación:** `destino = destino - fuente - @TRICOLOR`
 
 ---
 
@@ -144,14 +144,14 @@ RESTAR REAGAN, THATCHER
 **Sintaxis:** `MULTIPLICAR fuente`
 
 **Operación:**
-- 8-bit: `REAGAN16 = REAGAN8 * fuente`
-- 16-bit: `THATCHER:REAGAN = REAGAN16 * fuente`
-- 32-bit: `THATCHER:REAGAN = REAGAN32 * fuente`
-- 64-bit: `THATCHER:REAGAN = REAGAN * fuente`
+- 8-bit: `URIBE16 = URIBE8 * fuente`
+- 16-bit: `DUQUE:URIBE = URIBE16 * fuente`
+- 32-bit: `DUQUE:URIBE = URIBE32 * fuente`
+- 64-bit: `DUQUE:URIBE = URIBE * fuente`
 
 ```asm
-MOVER REAGAN, 10
-MULTIPLICAR THATCHER         ; THATCHER:REAGAN = REAGAN * THATCHER
+MOVER URIBE, 10
+MULTIPLICAR DUQUE            ; DUQUE:URIBE = URIBE * DUQUE
 ```
 
 ---
@@ -161,8 +161,8 @@ MULTIPLICAR THATCHER         ; THATCHER:REAGAN = REAGAN * THATCHER
 **Sintaxis:** `MULTIPLICAR_FIRMADO destino, fuente[, inmediato]`
 
 ```asm
-MULTIPLICAR_FIRMADO REAGAN, THATCHER        ; REAGAN *= THATCHER
-MULTIPLICAR_FIRMADO REAGAN, THATCHER, 10    ; REAGAN = THATCHER * 10
+MULTIPLICAR_FIRMADO URIBE, DUQUE        ; URIBE *= DUQUE
+MULTIPLICAR_FIRMADO URIBE, DUQUE, 10    ; URIBE = DUQUE * 10
 ```
 
 ---
@@ -172,14 +172,14 @@ MULTIPLICAR_FIRMADO REAGAN, THATCHER, 10    ; REAGAN = THATCHER * 10
 **Sintaxis:** `DIVIDIR fuente`
 
 **Operación:**
-- `REAGAN = THATCHER:REAGAN / fuente`
-- `THATCHER = THATCHER:REAGAN % fuente` (residuo)
+- `URIBE = DUQUE:URIBE / fuente`
+- `DUQUE = DUQUE:URIBE % fuente` (residuo)
 
 ```asm
-LIMPIAR THATCHER            ; Limpiar parte alta
-MOVER REAGAN, 100
-MOVER HAYEK, 7
-DIVIDIR HAYEK               ; REAGAN = 14, THATCHER = 2
+LIMPIAR DUQUE               ; Limpiar parte alta
+MOVER URIBE, 100
+MOVER PASTRANA, 7
+DIVIDIR PASTRANA            ; URIBE = 14, DUQUE = 2
 ```
 
 ---
@@ -199,11 +199,11 @@ DIVIDIR HAYEK               ; REAGAN = 14, THATCHER = 2
 **Operación:** `destino = destino & fuente`
 
 ```asm
-Y REAGAN, 0xFF              ; Máscara de byte bajo
-Y REAGAN, THATCHER
+Y URIBE, 0xFF               ; Máscara de byte bajo
+Y URIBE, DUQUE
 ```
 
-**Banderas afectadas:** Cero, Signo, Paridad. @LIBERTAD y @SERPIENTE = 0
+**Banderas afectadas:** Cero, Signo, Paridad. @TRICOLOR y @MACHETE = 0
 
 ---
 
@@ -214,7 +214,7 @@ Y REAGAN, THATCHER
 **Operación:** `destino = destino | fuente`
 
 ```asm
-O REAGAN, 0x80              ; Establecer bit 7
+O URIBE, 0x80               ; Establecer bit 7
 ```
 
 ---
@@ -226,8 +226,8 @@ O REAGAN, 0x80              ; Establecer bit 7
 **Operación:** `destino = destino ^ fuente`
 
 ```asm
-OX REAGAN, REAGAN           ; Poner en cero (rápido)
-OX REAGAN, 0xFF             ; Invertir byte bajo
+OX URIBE, URIBE             ; Poner en cero (rápido)
+OX URIBE, 0xFF              ; Invertir byte bajo
 ```
 
 ---
@@ -239,7 +239,7 @@ OX REAGAN, 0xFF             ; Invertir byte bajo
 **Operación:** `destino = ~destino`
 
 ```asm
-NO REAGAN                   ; Complemento a uno
+NO URIBE                    ; Complemento a uno
 ```
 
 **Banderas afectadas:** Ninguna
@@ -253,7 +253,7 @@ NO REAGAN                   ; Complemento a uno
 **Operación:** Ejecuta AND pero descarta resultado, solo afecta banderas.
 
 ```asm
-PROBAR REAGAN, 0x01         ; ¿Bit 0 activo?
+PROBAR URIBE, 0x01          ; ¿Bit 0 activo?
 SALTAR_SI_NO_CERO es_impar
 ```
 
@@ -266,8 +266,8 @@ SALTAR_SI_NO_CERO es_impar
 **Sintaxis:** `DESPLAZAR_IZQ destino, cantidad`
 
 ```asm
-DESPLAZAR_IZQ REAGAN, 4     ; REAGAN *= 16
-DESPLAZAR_IZQ REAGAN, HAYEK8 ; Cantidad en registro
+DESPLAZAR_IZQ URIBE, 4      ; URIBE *= 16
+DESPLAZAR_IZQ URIBE, PASTRANA8 ; Cantidad en registro
 ```
 
 ---
@@ -277,7 +277,7 @@ DESPLAZAR_IZQ REAGAN, HAYEK8 ; Cantidad en registro
 **Sintaxis:** `DESPLAZAR_DER destino, cantidad`
 
 ```asm
-DESPLAZAR_DER REAGAN, 1     ; REAGAN /= 2 (sin signo)
+DESPLAZAR_DER URIBE, 1      ; URIBE /= 2 (sin signo)
 ```
 
 ---
@@ -289,7 +289,7 @@ DESPLAZAR_DER REAGAN, 1     ; REAGAN /= 2 (sin signo)
 **Descripción:** Preserva el bit de signo.
 
 ```asm
-DESPLAZAR_DER_ARIT REAGAN, 2  ; División con signo por 4
+DESPLAZAR_DER_ARIT URIBE, 2   ; División con signo por 4
 ```
 
 ---
@@ -318,8 +318,8 @@ ROTAR_DER destino, cantidad
 
 ```asm
 SALTAR inicio               ; Salto a etiqueta
-SALTAR REAGAN               ; Salto indirecto
-SALTAR [tabla + HAYEK*8]    ; Salto indexado
+SALTAR URIBE                ; Salto indirecto
+SALTAR [tabla + PASTRANA*8] ; Salto indexado
 ```
 
 ---
@@ -331,7 +331,7 @@ SALTAR [tabla + HAYEK*8]    ; Salto indexado
 **Operación:** Resta op2 de op1, descarta resultado, establece banderas.
 
 ```asm
-COMPARAR REAGAN, 100
+COMPARAR URIBE, 100
 SALTAR_SI_MAYOR exito
 SALTAR_SI_MENOR fallo
 ```
@@ -356,8 +356,8 @@ SALTAR_SI_MENOR fallo
 | `SALTAR_SI_POSITIVO` | Es positivo/cero | Signo = 0 |
 | `SALTAR_SI_OVERFLOW` | Hay overflow | Overflow = 1 |
 | `SALTAR_SI_NO_OVERFLOW` | No hay overflow | Overflow = 0 |
-| `SALTAR_SI_ACARREO` | Hay carry | @LIBERTAD = 1 |
-| `SALTAR_SI_NO_ACARREO` | No hay carry | @LIBERTAD = 0 |
+| `SALTAR_SI_ACARREO` | Hay carry | @TRICOLOR = 1 |
+| `SALTAR_SI_NO_ACARREO` | No hay carry | @TRICOLOR = 0 |
 
 ---
 
@@ -368,7 +368,7 @@ SALTAR_SI_MENOR fallo
 **Operación:** Empuja dirección de retorno, salta a destino.
 
 ```asm
-LLAMAR calcular_impuesto
+LLAMAR calcular_cafe
 ; ... continúa aquí después del retorno
 ```
 
@@ -391,10 +391,10 @@ RETORNAR 16           ; Retorno y limpiar 16 bytes de argumentos
 
 **Sintaxis:** `BUCLE destino`
 
-**Operación:** Decrementa HAYEK, salta si no es cero.
+**Operación:** Decrementa PASTRANA, salta si no es cero.
 
 ```asm
-MOVER HAYEK, 10
+MOVER PASTRANA, 10
 repetir:
     ; ... código del bucle ...
     BUCLE repetir       ; Repetir 10 veces
@@ -419,17 +419,17 @@ repetir:
 #### Linux
 ```asm
 ; Escribir "Hola" a stdout
-MOVER REAGAN, 1              ; sys_write
-MOVER FORD, 1                ; fd = stdout
-CARGAR MORGAN, mensaje       ; buffer
-MOVER CARNEGIE, 4            ; longitud
-SISTEMA 0                    ; syscall (0 = usar REAGAN como número)
+MOVER URIBE, 1               ; sys_write
+MOVER GILINSKI, 1            ; fd = stdout
+CARGAR SANTODOMINGO, mensaje ; buffer
+MOVER ARDILA, 4              ; longitud
+SISTEMA 0                    ; syscall (0 = usar URIBE como número)
 ```
 
 #### Windows
 ```asm
 ; Usar convención de llamada Windows
-CARGAR FORD, mensaje
+CARGAR GILINSKI, mensaje
 LLAMAR EXTERNO WriteConsoleA
 ```
 
@@ -458,8 +458,8 @@ SALIDA puerto, fuente
 **Nota:** Requiere privilegios de kernel en la mayoría de sistemas.
 
 ```asm
-ENTRADA REAGAN8, 0x60       ; Leer teclado
-SALIDA 0x60, REAGAN8        ; Escribir a puerto
+ENTRADA URIBE8, 0x60        ; Leer teclado
+SALIDA 0x60, URIBE8         ; Escribir a puerto
 ```
 
 ---
@@ -470,12 +470,12 @@ SALIDA 0x60, REAGAN8        ; Escribir a puerto
 
 **Sintaxis:** `MOVER_CADENA`
 
-**Operación:** Copia de [RAND] a [ROCKEFELLER], actualiza ambos.
+**Operación:** Copia de [TURBAY] a [SARMIENTO], actualiza ambos.
 
 ```asm
-CARGAR RAND, origen
-CARGAR ROCKEFELLER, destino
-MOVER HAYEK, longitud
+CARGAR TURBAY, origen
+CARGAR SARMIENTO, destino
+MOVER PASTRANA, longitud
 REPETIR MOVER_CADENA
 ```
 
@@ -487,7 +487,7 @@ Variantes: `MOVER_CADENA_BYTE`, `MOVER_CADENA_PALABRA`, `MOVER_CADENA_DOBLE`, `M
 
 **Sintaxis:** `COMPARAR_CADENA`
 
-**Operación:** Compara [RAND] con [ROCKEFELLER].
+**Operación:** Compara [TURBAY] con [SARMIENTO].
 
 ---
 
@@ -495,7 +495,7 @@ Variantes: `MOVER_CADENA_BYTE`, `MOVER_CADENA_PALABRA`, `MOVER_CADENA_DOBLE`, `M
 
 **Sintaxis:** `BUSCAR_CADENA`
 
-**Operación:** Busca REAGAN en [ROCKEFELLER].
+**Operación:** Busca URIBE en [SARMIENTO].
 
 ---
 
@@ -503,7 +503,7 @@ Variantes: `MOVER_CADENA_BYTE`, `MOVER_CADENA_PALABRA`, `MOVER_CADENA_DOBLE`, `M
 
 **Sintaxis:** `CARGAR_CADENA`
 
-**Operación:** Carga de [RAND] a REAGAN.
+**Operación:** Carga de [TURBAY] a URIBE.
 
 ---
 
@@ -511,7 +511,7 @@ Variantes: `MOVER_CADENA_BYTE`, `MOVER_CADENA_PALABRA`, `MOVER_CADENA_DOBLE`, `M
 
 **Sintaxis:** `GUARDAR_CADENA`
 
-**Operación:** Guarda REAGAN en [ROCKEFELLER].
+**Operación:** Guarda URIBE en [SARMIENTO].
 
 ---
 
@@ -529,9 +529,9 @@ Variantes: `MOVER_CADENA_BYTE`, `MOVER_CADENA_PALABRA`, `MOVER_CADENA_DOBLE`, `M
 | `MOVER_SI_NO_CERO` | Si no cero |
 
 ```asm
-COMPARAR REAGAN, THATCHER
-MOVER_SI_MAYOR HAYEK, REAGAN    ; HAYEK = max(REAGAN, THATCHER)
-MOVER_SI_MENOR HAYEK, THATCHER
+COMPARAR URIBE, DUQUE
+MOVER_SI_MAYOR PASTRANA, URIBE    ; PASTRANA = max(URIBE, DUQUE)
+MOVER_SI_MENOR PASTRANA, DUQUE
 ```
 
 ---
@@ -543,8 +543,8 @@ MOVER_SI_MENOR HAYEK, THATCHER
 **Operación:** Establece destino en 1 si condición es verdadera, 0 si no.
 
 ```asm
-COMPARAR REAGAN, 100
-ESTABLECER_SI_MAYOR HAYEK8     ; HAYEK8 = (REAGAN > 100) ? 1 : 0
+COMPARAR URIBE, 100
+ESTABLECER_SI_MAYOR PASTRANA8     ; PASTRANA8 = (URIBE > 100) ? 1 : 0
 ```
 
 ---
@@ -555,10 +555,10 @@ ESTABLECER_SI_MAYOR HAYEK8     ; HAYEK8 = (REAGAN > 100) ? 1 : 0
 
 **Sintaxis:** `PROBAR_BIT base, bit`
 
-**Operación:** Copia bit especificado a @LIBERTAD.
+**Operación:** Copia bit especificado a @TRICOLOR.
 
 ```asm
-PROBAR_BIT REAGAN, 7           ; ¿Bit 7 activo?
+PROBAR_BIT URIBE, 7            ; ¿Bit 7 activo?
 SALTAR_SI_ACARREO bit_activo
 ```
 
@@ -569,7 +569,7 @@ SALTAR_SI_ACARREO bit_activo
 **Sintaxis:** `ESTABLECER_BIT base, bit`
 
 ```asm
-ESTABLECER_BIT REAGAN, 0       ; Establecer bit 0
+ESTABLECER_BIT URIBE, 0        ; Establecer bit 0
 ```
 
 ---
@@ -608,10 +608,10 @@ ESTABLECER_BIT REAGAN, 0       ; Establecer bit 0
 
 **Sintaxis:** `COMPARAR_INTERCAMBIAR destino, fuente`
 
-**Operación:** Si REAGAN == destino, entonces destino = fuente y @LIBERTAD = 0. Si no, REAGAN = destino y @LIBERTAD = 1.
+**Operación:** Si URIBE == destino, entonces destino = fuente y @TRICOLOR = 0. Si no, URIBE = destino y @TRICOLOR = 1.
 
 ```asm
-MOVER REAGAN, valor_esperado
+MOVER URIBE, valor_esperado
 BLOQUEAR COMPARAR_INTERCAMBIAR [mutex], nuevo_valor
 SALTAR_SI_NO_CERO retry
 ```
@@ -625,20 +625,22 @@ SALTAR_SI_NO_CERO retry
 **Operación:** temp = destino; destino += fuente; fuente = temp
 
 ```asm
-BLOQUEAR INTERCAMBIAR_SUMAR [contador], REAGAN  ; Atómico: REAGAN = old, contador += old_REAGAN
+BLOQUEAR INTERCAMBIAR_SUMAR [contador], URIBE  ; Atómico: URIBE = old, contador += old_URIBE
 ```
 
 ---
 
 ## Instrucciones SIMD (El Equipo)
 
-*Próximamente: Extensiones vectoriales nombradas por equipos de libre mercado.*
+*Próximamente: Extensiones vectoriales nombradas por regiones de Colombia.*
 
 | Registro | Inspiración |
 |----------|-------------|
-| `ATLAS0-15` | Atlas (mitología, cargando el mundo) |
-| `FENIX0-15` | Fénix (renacimiento, resiliencia) |
+| `CARIBE0-15` | Costa Caribe colombiana |
+| `PACIFICO0-15` | Costa Pacífica colombiana |
+| `ANDINO0-15` | Región Andina |
+| `AMAZONIA0-15` | Región Amazónica |
 
 ---
 
-*"Cada instrucción cuenta, como cada centavo en el libre mercado."*
+*"Cada instrucción cuenta, como cada grano de café colombiano."*

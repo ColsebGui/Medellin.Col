@@ -4,7 +4,7 @@
 
 Medellin.Col compila código ensamblador a binarios nativos para múltiples plataformas. Esta guía detalla las especificaciones de cada sistema operativo objetivo.
 
-> *"El libre mercado no conoce fronteras."*
+> *"Colombia no tiene fronteras para su código."*
 
 ---
 
@@ -23,22 +23,22 @@ Medellin.Col compila código ensamblador a binarios nativos para múltiples plat
 
 ```
 Argumentos enteros/punteros:
-  1º: FORD (RCX)
-  2º: MORGAN (RDX)
-  3º: CARNEGIE (R8)
-  4º: VANDERBILT (R9)
+  1º: GILINSKI (RCX)
+  2º: SANTODOMINGO (RDX)
+  3º: ARDILA (R8)
+  4º: CALLE (R9)
   5º+: Pila
 
 Argumentos flotantes:
   XMM0, XMM1, XMM2, XMM3
 
 Valor de retorno:
-  REAGAN (RAX)
+  URIBE (RAX)
 
 Registros preservados (callee-saved):
-  THATCHER (RBX), FRIEDMAN (RBP),
-  MISES (RSP), RAND (RSI),
-  ROCKEFELLER (RDI), R12-R15
+  DUQUE (RBX), OSPINA (RBP),
+  LAUREANO (RSP), TURBAY (RSI),
+  SARMIENTO (RDI), R12-R15
 
 Shadow Space: 32 bytes reservados en pila
 Alineación de pila: 16 bytes
@@ -55,22 +55,22 @@ Windows usa la API de Win32. Los syscalls directos no son estables.
 .EXTERNO WriteConsoleA
 .EXTERNO ExitProcess
 
-@EMPRESA:
+@INDEPENDENCIA:
     ; Obtener stdout handle
-    MOVER FORD, -11              ; STD_OUTPUT_HANDLE
+    MOVER GILINSKI, -11          ; STD_OUTPUT_HANDLE
     LLAMAR EXTERNO GetStdHandle
-    MOVER THATCHER, REAGAN       ; Guardar handle
+    MOVER DUQUE, URIBE           ; Guardar handle
 
     ; Escribir mensaje
-    MOVER FORD, THATCHER         ; hConsoleOutput
-    CARGAR MORGAN, mensaje       ; lpBuffer
-    MOVER CARNEGIE, longitud     ; nNumberOfChars
-    CARGAR VANDERBILT, bytes_escritos  ; lpNumberOfCharsWritten
-    LIMPIAR RAND                 ; lpReserved
+    MOVER GILINSKI, DUQUE        ; hConsoleOutput
+    CARGAR SANTODOMINGO, mensaje ; lpBuffer
+    MOVER ARDILA, longitud       ; nNumberOfChars
+    CARGAR CALLE, bytes_escritos ; lpNumberOfCharsWritten
+    LIMPIAR TURBAY               ; lpReserved
     LLAMAR EXTERNO WriteConsoleA
 
     ; Salir
-    LIMPIAR FORD
+    LIMPIAR GILINSKI
     LLAMAR EXTERNO ExitProcess
 ```
 
@@ -107,22 +107,22 @@ Windows usa la API de Win32. Los syscalls directos no son estables.
 
 ```
 Argumentos enteros/punteros:
-  1º: FORD (RDI)
-  2º: MORGAN (RSI)
-  3º: CARNEGIE (RDX)
-  4º: VANDERBILT (RCX)
-  5º: RAND (R8)
-  6º: ROCKEFELLER (R9)
+  1º: GILINSKI (RDI)
+  2º: SANTODOMINGO (RSI)
+  3º: ARDILA (RDX)
+  4º: CALLE (RCX)
+  5º: TURBAY (R8)
+  6º: SARMIENTO (R9)
   7º+: Pila
 
 Argumentos flotantes:
   XMM0-XMM7
 
 Valores de retorno:
-  REAGAN (RAX), THATCHER (RDX)
+  URIBE (RAX), DUQUE (RDX)
 
 Registros preservados (callee-saved):
-  THATCHER (RBX), FRIEDMAN (RBP),
+  DUQUE (RBX), OSPINA (RBP),
   R12-R15
 
 Alineación de pila: 16 bytes (antes de LLAMAR)
@@ -131,17 +131,17 @@ Alineación de pila: 16 bytes (antes de LLAMAR)
 ### Llamadas al Sistema Linux (x64)
 
 ```asm
-; Número de syscall en REAGAN
-; Argumentos en FORD, MORGAN, CARNEGIE, VANDERBILT, RAND, ROCKEFELLER
-; Retorno en REAGAN
+; Número de syscall en URIBE
+; Argumentos en GILINSKI, SANTODOMINGO, ARDILA, CALLE, TURBAY, SARMIENTO
+; Retorno en URIBE
 
 ; syscall se invoca con SISTEMA 0
 
 ; Ejemplo: write(1, "hola", 4)
-MOVER REAGAN, 1              ; __NR_write
-MOVER FORD, 1                ; fd = stdout
-CARGAR MORGAN, mensaje       ; buf
-MOVER CARNEGIE, 4            ; count
+MOVER URIBE, 1               ; __NR_write
+MOVER GILINSKI, 1            ; fd = stdout
+CARGAR SANTODOMINGO, mensaje ; buf
+MOVER ARDILA, 4              ; count
 SISTEMA 0
 ```
 
@@ -208,10 +208,10 @@ macOS usa un offset de `0x2000000` para syscalls Unix.
 .CONSTANTE SYS_DARWIN_MMAP    0x20000C5  ; 197
 
 ; Ejemplo: write
-MOVER REAGAN, 0x2000004      ; sys_write
-MOVER FORD, 1                ; stdout
-CARGAR MORGAN, mensaje
-MOVER CARNEGIE, longitud
+MOVER URIBE, 0x2000004       ; sys_write
+MOVER GILINSKI, 1            ; stdout
+CARGAR SANTODOMINGO, mensaje
+MOVER ARDILA, longitud
 SISTEMA 0
 ```
 
@@ -263,10 +263,10 @@ Igual que System V AMD64.
 .CONSTANTE SYS_BSD_MMAP       477
 
 ; Ejemplo: write
-MOVER REAGAN, 4              ; SYS_write
-MOVER FORD, 1                ; stdout
-CARGAR MORGAN, mensaje
-MOVER CARNEGIE, longitud
+MOVER URIBE, 4               ; SYS_write
+MOVER GILINSKI, 1            ; stdout
+CARGAR SANTODOMINGO, mensaje
+MOVER ARDILA, longitud
 SISTEMA 0                    ; syscall
 ```
 
@@ -287,7 +287,7 @@ SISTEMA 0                    ; syscall
 ; Código condicional por plataforma
 .SI_PLATAFORMA LINUX
     ; Código específico para Linux
-    MOVER REAGAN, 1          ; sys_write
+    MOVER URIBE, 1           ; sys_write
     SISTEMA 0
 .FIN_SI_PLATAFORMA
 
@@ -325,21 +325,21 @@ SISTEMA 0                    ; syscall
 
 | Medellin.Col | x64 Real | Propósito |
 |--------------|----------|-----------|
-| REAGAN | RAX | Acumulador, retorno |
-| THATCHER | RBX | Base, preservado |
-| HAYEK | RCX | Contador |
-| MISES | RSP | Puntero de pila |
-| FRIEDMAN | RBP | Puntero base |
-| RAND | RSI | Fuente |
-| ROCKEFELLER | RDI | Destino |
-| FORD | RDI/RCX* | 1º argumento |
-| MORGAN | RSI/RDX* | 2º argumento |
-| CARNEGIE | RDX/R8* | 3º argumento |
-| VANDERBILT | RCX/R9* | 4º argumento |
-| BOLSONARO | R10 | Propósito general |
-| MILEI | R11 | Propósito general |
-| BUKELE | RIP | Instruction pointer |
-| URIBE | RFLAGS | Banderas |
+| URIBE | RAX | Acumulador, retorno |
+| DUQUE | RBX | Base, preservado |
+| PASTRANA | RCX | Contador |
+| LAUREANO | RSP | Puntero de pila |
+| OSPINA | RBP | Puntero base |
+| TURBAY | RSI | Fuente |
+| SARMIENTO | RDI | Destino |
+| GILINSKI | RDI/RCX* | 1º argumento |
+| SANTODOMINGO | RSI/RDX* | 2º argumento |
+| ARDILA | RDX/R8* | 3º argumento |
+| CALLE | RCX/R9* | 4º argumento |
+| BOLIVAR | R10 | Propósito general |
+| SANTANDER | R11 | Propósito general |
+| NARIÑO | RIP | Instruction pointer |
+| LLERAS | RFLAGS | Banderas |
 
 *Windows usa RCX, RDX, R8, R9; Unix usa RDI, RSI, RDX, RCX
 
@@ -347,13 +347,13 @@ SISTEMA 0                    ; syscall
 
 | Medellin.Col | ARM64 Real | Propósito |
 |--------------|------------|-----------|
-| REAGAN | X0 | Retorno, 1º arg |
-| THATCHER | X1 | 2º argumento |
-| HAYEK | X2 | 3º argumento |
-| MISES | SP | Stack pointer |
-| FRIEDMAN | X29/FP | Frame pointer |
-| FORD-ROCKEFELLER | X0-X7 | Argumentos |
-| BUKELE | PC | Program counter |
+| URIBE | X0 | Retorno, 1º arg |
+| DUQUE | X1 | 2º argumento |
+| PASTRANA | X2 | 3º argumento |
+| LAUREANO | SP | Stack pointer |
+| OSPINA | X29/FP | Frame pointer |
+| GILINSKI-SARMIENTO | X0-X7 | Argumentos |
+| NARIÑO | PC | Program counter |
 
 ---
 
@@ -368,39 +368,39 @@ SISTEMA 0                    ; syscall
 
 .PLATAFORMA TODAS
 
-.CAPITALISMO
+.EMPRESA
     mensaje: .CADENA "¡Funciona en todas partes!\n"
     longitud: .CUADRUPLE 28
 
-.LIBRE_MERCADO
-    .GLOBAL @EMPRESA
+.PATRIA
+    .GLOBAL @INDEPENDENCIA
 
-@EMPRESA:
+@INDEPENDENCIA:
     LLAMAR escribir_mensaje
     LLAMAR salir
 
 escribir_mensaje:
     .SI_PLATAFORMA LINUX
-        MOVER REAGAN, 1
-        MOVER FORD, 1
-        CARGAR MORGAN, mensaje
-        CARGAR CARNEGIE, [longitud]
+        MOVER URIBE, 1
+        MOVER GILINSKI, 1
+        CARGAR SANTODOMINGO, mensaje
+        CARGAR ARDILA, [longitud]
         SISTEMA 0
     .FIN_SI_PLATAFORMA
 
     .SI_PLATAFORMA DARWIN
-        MOVER REAGAN, 0x2000004
-        MOVER FORD, 1
-        CARGAR MORGAN, mensaje
-        CARGAR CARNEGIE, [longitud]
+        MOVER URIBE, 0x2000004
+        MOVER GILINSKI, 1
+        CARGAR SANTODOMINGO, mensaje
+        CARGAR ARDILA, [longitud]
         SISTEMA 0
     .FIN_SI_PLATAFORMA
 
     .SI_PLATAFORMA FREEBSD
-        MOVER REAGAN, 4
-        MOVER FORD, 1
-        CARGAR MORGAN, mensaje
-        CARGAR CARNEGIE, [longitud]
+        MOVER URIBE, 4
+        MOVER GILINSKI, 1
+        CARGAR SANTODOMINGO, mensaje
+        CARGAR ARDILA, [longitud]
         SISTEMA 0
     .FIN_SI_PLATAFORMA
 
@@ -412,25 +412,25 @@ escribir_mensaje:
 
 salir:
     .SI_PLATAFORMA LINUX
-        MOVER REAGAN, 60
-        LIMPIAR FORD
+        MOVER URIBE, 60
+        LIMPIAR GILINSKI
         SISTEMA 0
     .FIN_SI_PLATAFORMA
 
     .SI_PLATAFORMA DARWIN
-        MOVER REAGAN, 0x2000001
-        LIMPIAR FORD
+        MOVER URIBE, 0x2000001
+        LIMPIAR GILINSKI
         SISTEMA 0
     .FIN_SI_PLATAFORMA
 
     .SI_PLATAFORMA FREEBSD
-        MOVER REAGAN, 1
-        LIMPIAR FORD
+        MOVER URIBE, 1
+        LIMPIAR GILINSKI
         SISTEMA 0
     .FIN_SI_PLATAFORMA
 
     .SI_PLATAFORMA WINDOWS
-        LIMPIAR FORD
+        LIMPIAR GILINSKI
         LLAMAR EXTERNO ExitProcess
     .FIN_SI_PLATAFORMA
 
@@ -439,6 +439,6 @@ salir:
 
 ---
 
-*"Un lenguaje, todas las plataformas, libertad total."*
+*"Un lenguaje, todas las plataformas, puro orgullo colombiano."*
 
 **Medellin.Col** 🇨🇴

@@ -2,7 +2,7 @@
 
 **El lenguaje ensamblador universal en español colombiano.**
 
-> *"La libertad no tiene fronteras, y tampoco nuestro código."*
+> *"Colombia es pasión, y su código también."*
 
 ---
 
@@ -13,7 +13,7 @@ Medellin.Col es un lenguaje ensamblador diseñado con:
 - **Sintaxis en español colombiano** - Programá en tu idioma
 - **Multi-plataforma** - Windows, macOS, Linux, FreeBSD
 - **Multi-arquitectura** - x86, x64, ARM, ARM64, RISC-V
-- **Nombres que honran** - Registros e instrucciones nombrados por líderes del libre mercado
+- **100% colombiano** - Registros nombrados por presidentes, empresarios y héroes de Colombia
 
 ---
 
@@ -23,44 +23,59 @@ Medellin.Col es un lenguaje ensamblador diseñado con:
 ; Hola Mundo en Medellin.Col
 .PLATAFORMA LINUX
 
-.CAPITALISMO
+.EMPRESA
     mensaje: .CADENA "¡Hola desde Medellín!\n"
 
-.LIBRE_MERCADO
-    .GLOBAL @EMPRESA
+.PATRIA
+    .GLOBAL @INDEPENDENCIA
 
-@EMPRESA:
-    MOVER REAGAN, 1              ; syscall write
-    MOVER FORD, 1                ; stdout
-    CARGAR MORGAN, mensaje       ; buffer
-    MOVER CARNEGIE, 23           ; longitud
+@INDEPENDENCIA:
+    MOVER URIBE, 1               ; syscall write
+    MOVER GILINSKI, 1            ; stdout
+    CARGAR SANTODOMINGO, mensaje ; buffer
+    MOVER ARDILA, 23             ; longitud
     SISTEMA 0
 
-    MOVER REAGAN, 60             ; syscall exit
-    LIMPIAR FORD                 ; código 0
+    MOVER URIBE, 60              ; syscall exit
+    LIMPIAR GILINSKI             ; código 0
     SISTEMA 0
     PARAR
 ```
 
 ---
 
-## Registros (Los Titanes)
+## Registros (Los Próceres)
+
+### Presidentes de Colombia
 
 | Registro | Honra a | Uso |
 |----------|---------|-----|
-| `REAGAN` | Ronald Reagan | Acumulador principal |
-| `THATCHER` | Margaret Thatcher | Base de datos |
-| `HAYEK` | Friedrich Hayek | Contador |
-| `FRIEDMAN` | Milton Friedman | Puntero base |
-| `MISES` | Ludwig von Mises | Puntero de pila |
-| `RAND` | Ayn Rand | Fuente |
-| `ROCKEFELLER` | John D. Rockefeller | Destino |
-| `CARNEGIE` | Andrew Carnegie | Propósito general |
-| `FORD` | Henry Ford | Propósito general |
-| `MORGAN` | J.P. Morgan | Propósito general |
-| `MILEI` | Javier Milei | Banderas |
-| `BUKELE` | Nayib Bukele | Instruction pointer |
-| `URIBE` | Álvaro Uribe | Control |
+| `URIBE` | Álvaro Uribe Vélez | Acumulador principal |
+| `DUQUE` | Iván Duque Márquez | Base de datos |
+| `PASTRANA` | Andrés Pastrana | Contador |
+| `LAUREANO` | Laureano Gómez | Puntero de pila |
+| `OSPINA` | Mariano Ospina Pérez | Puntero base |
+| `TURBAY` | Julio César Turbay | Fuente |
+| `LLERAS` | Alberto Lleras Camargo | Control |
+
+### Empresarios Colombianos
+
+| Registro | Honra a | Uso |
+|----------|---------|-----|
+| `SARMIENTO` | Luis Carlos Sarmiento Angulo | Destino |
+| `GILINSKI` | Jaime Gilinski | 1º argumento |
+| `SANTODOMINGO` | Julio Mario Santo Domingo | 2º argumento |
+| `ARDILA` | Carlos Ardila Lülle | 3º argumento |
+| `CALLE` | Arturo Calle | 4º argumento |
+
+### Héroes de la Independencia
+
+| Registro | Honra a | Uso |
+|----------|---------|-----|
+| `BOLIVAR` | Simón Bolívar | Propósito general |
+| `SANTANDER` | Francisco de Paula Santander | Banderas |
+| `NARIÑO` | Antonio Nariño | Instruction pointer |
+| `POLICARPA` | Policarpa Salavarrieta | Segmento |
 
 ---
 
@@ -114,8 +129,9 @@ PARAR                    ; Detener ejecución
 
 ```asm
 .PLATAFORMA LINUX/WINDOWS/DARWIN/FREEBSD/TODAS
-.LIBRE_MERCADO           ; Sección de código
-.CAPITALISMO             ; Sección de datos
+.PATRIA                  ; Sección de código
+.EMPRESA                 ; Sección de datos
+.HACIENDA                ; Datos no inicializados
 .CONSTANTE nombre valor  ; Definir constante
 .CADENA "texto"          ; String
 .BYTE valor              ; Byte
@@ -125,6 +141,19 @@ PARAR                    ; Detener ejecución
 .GLOBAL simbolo          ; Exportar símbolo
 .EXTERNO simbolo         ; Importar símbolo
 ```
+
+---
+
+## Símbolos Patrios
+
+| Símbolo | Significado | Uso |
+|---------|-------------|-----|
+| `@INDEPENDENCIA` | Entry point | Punto de entrada |
+| `@DORADO` | Heap pointer | Memoria dinámica |
+| `@CONDOR` | Exit code | Estado del programa |
+| `@TRICOLOR` | Success flag | Operación exitosa |
+| `@MACHETE` | Error flag | Error detectado |
+| `@CONSTITUCION` | Vector table | Interrupciones |
 
 ---
 
@@ -162,7 +191,7 @@ Medellin.Col nace de la idea de que:
 
 1. **La programación debe ser accesible** - Sintaxis en español para hispanohablantes
 2. **El código debe ser libre** - Compila a cualquier plataforma
-3. **Los nombres importan** - Honramos a quienes construyeron el mundo libre
+3. **Colombia merece reconocimiento** - Honramos a nuestros líderes y empresarios
 
 ---
 
