@@ -1,0 +1,92 @@
+; ============================================
+; Programa: Hola Mundo
+; Descripción: El clásico primer programa
+; Plataforma: TODAS
+; Autor: Medellin.Col Team
+; ============================================
+
+.PLATAFORMA TODAS
+
+; ----------------------------------------
+; Sección de Datos - CAPITALISMO
+; "Donde se acumula la riqueza de información"
+; ----------------------------------------
+.CAPITALISMO
+    mensaje:    .CADENA "¡Hola Mundo desde Medellín, Colombia!\n"
+    longitud:   .CUADRUPLE 40
+
+; ----------------------------------------
+; Sección de Código - LIBRE_MERCADO
+; "Donde fluye la ejecución libremente"
+; ----------------------------------------
+.LIBRE_MERCADO
+    .GLOBAL @EMPRESA
+
+; Punto de entrada principal
+@EMPRESA:
+    ; ====== LINUX ======
+    .SI_PLATAFORMA LINUX
+        ; Escribir mensaje a stdout
+        MOVER REAGAN, 1              ; syscall: write
+        MOVER FORD, 1                ; fd: stdout
+        CARGAR MORGAN, mensaje       ; buffer: dirección del mensaje
+        CARGAR CARNEGIE, [longitud]  ; count: longitud
+        SISTEMA 0
+
+        ; Salir con código 0
+        MOVER REAGAN, 60             ; syscall: exit
+        LIMPIAR FORD                 ; código de salida: 0
+        SISTEMA 0
+    .FIN_SI_PLATAFORMA
+
+    ; ====== WINDOWS ======
+    .SI_PLATAFORMA WINDOWS
+        ; Obtener handle de stdout
+        MOVER FORD, -11              ; STD_OUTPUT_HANDLE
+        LLAMAR EXTERNO GetStdHandle
+        MOVER THATCHER, REAGAN       ; Guardar handle
+
+        ; Escribir al console
+        MOVER FORD, THATCHER         ; hConsoleOutput
+        CARGAR MORGAN, mensaje       ; lpBuffer
+        MOVER CARNEGIE, 40           ; nNumberOfCharsToWrite
+        LIMPIAR VANDERBILT           ; lpNumberOfCharsWritten (NULL)
+        LIMPIAR RAND                 ; lpReserved (NULL)
+        LLAMAR EXTERNO WriteConsoleA
+
+        ; Salir
+        LIMPIAR FORD                 ; uExitCode = 0
+        LLAMAR EXTERNO ExitProcess
+    .FIN_SI_PLATAFORMA
+
+    ; ====== DARWIN (macOS) ======
+    .SI_PLATAFORMA DARWIN
+        ; macOS usa syscall similar a Linux pero con offset
+        MOVER REAGAN, 0x2000004      ; syscall: write (macOS)
+        MOVER FORD, 1                ; fd: stdout
+        CARGAR MORGAN, mensaje       ; buffer
+        CARGAR CARNEGIE, [longitud]  ; count
+        SISTEMA 0
+
+        ; Salir
+        MOVER REAGAN, 0x2000001      ; syscall: exit (macOS)
+        LIMPIAR FORD                 ; código: 0
+        SISTEMA 0
+    .FIN_SI_PLATAFORMA
+
+    ; ====== FREEBSD ======
+    .SI_PLATAFORMA FREEBSD
+        ; FreeBSD syscalls
+        MOVER REAGAN, 4              ; syscall: write
+        MOVER FORD, 1                ; fd: stdout
+        CARGAR MORGAN, mensaje       ; buffer
+        CARGAR CARNEGIE, [longitud]  ; count
+        SISTEMA 0
+
+        ; Salir
+        MOVER REAGAN, 1              ; syscall: exit
+        LIMPIAR FORD                 ; código: 0
+        SISTEMA 0
+    .FIN_SI_PLATAFORMA
+
+    PARAR

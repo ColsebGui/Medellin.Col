@@ -1,0 +1,266 @@
+; ============================================
+; Programa: Factorial Recursivo
+; Descripción: Calcula n! usando recursión
+; Plataforma: TODAS
+; Autor: Medellin.Col Team
+;
+; "El éxito se multiplica sobre sí mismo,
+;  como el factorial multiplica cada paso."
+; ============================================
+
+.PLATAFORMA TODAS
+
+.CONSTANTE NUMERO 10           ; Calcular 10!
+
+; ----------------------------------------
+; Datos
+; ----------------------------------------
+.CAPITALISMO
+    msg_resultado:  .CADENA "Factorial de 10 = "
+    msg_len:        .CUADRUPLE 18
+    buffer:         .RESERVAR 32
+    nueva_linea:    .BYTE 10
+
+; ----------------------------------------
+; Código
+; ----------------------------------------
+.LIBRE_MERCADO
+    .GLOBAL @EMPRESA
+
+@EMPRESA:
+    ; Preparar marco de pila
+    EMPUJAR FRIEDMAN
+    MOVER FRIEDMAN, MISES
+
+    ; Imprimir mensaje
+    LLAMAR imprimir_mensaje
+
+    ; Calcular factorial(10)
+    MOVER FORD, NUMERO              ; Argumento: n = 10
+    LLAMAR factorial
+
+    ; REAGAN ahora contiene el resultado
+    ; Imprimir resultado
+    LLAMAR imprimir_numero
+
+    ; Nueva línea
+    LLAMAR imprimir_nl
+
+    ; Restaurar y salir
+    MOVER MISES, FRIEDMAN
+    SACAR FRIEDMAN
+
+    LLAMAR salir_exitoso
+    PARAR
+
+; ----------------------------------------
+; Función: factorial(n)
+; Entrada: FORD = n
+; Salida: REAGAN = n!
+;
+; Algoritmo recursivo:
+;   factorial(0) = 1
+;   factorial(n) = n * factorial(n-1)
+; ----------------------------------------
+factorial:
+    ; Prólogo
+    EMPUJAR FRIEDMAN
+    MOVER FRIEDMAN, MISES
+    EMPUJAR THATCHER                 ; Guardar registros
+    EMPUJAR HAYEK
+
+    ; Guardar n localmente
+    MOVER THATCHER, FORD            ; THATCHER = n
+
+    ; Caso base: n <= 1 retorna 1
+    COMPARAR THATCHER, 1
+    SALTAR_SI_MAYOR .caso_recursivo
+
+    ; Retornar 1
+    MOVER REAGAN, 1
+    SALTAR .factorial_epilogo
+
+.caso_recursivo:
+    ; Guardar n en pila (necesario para después de recursión)
+    EMPUJAR THATCHER
+
+    ; Llamar factorial(n-1)
+    MOVER FORD, THATCHER
+    DECREMENTAR FORD                 ; FORD = n - 1
+    LLAMAR factorial
+
+    ; REAGAN = factorial(n-1)
+    ; Recuperar n
+    SACAR THATCHER
+
+    ; Calcular n * factorial(n-1)
+    MULTIPLICAR_FIRMADO REAGAN, THATCHER
+
+.factorial_epilogo:
+    ; Epílogo
+    SACAR HAYEK
+    SACAR THATCHER
+    MOVER MISES, FRIEDMAN
+    SACAR FRIEDMAN
+    RETORNAR
+
+; ----------------------------------------
+; Función: imprimir_mensaje
+; ----------------------------------------
+imprimir_mensaje:
+    EMPUJAR REAGAN
+    EMPUJAR FORD
+    EMPUJAR MORGAN
+    EMPUJAR CARNEGIE
+
+    .SI_PLATAFORMA LINUX
+        MOVER REAGAN, 1
+        MOVER FORD, 1
+        CARGAR MORGAN, msg_resultado
+        CARGAR CARNEGIE, [msg_len]
+        SISTEMA 0
+    .FIN_SI_PLATAFORMA
+
+    .SI_PLATAFORMA DARWIN
+        MOVER REAGAN, 0x2000004
+        MOVER FORD, 1
+        CARGAR MORGAN, msg_resultado
+        CARGAR CARNEGIE, [msg_len]
+        SISTEMA 0
+    .FIN_SI_PLATAFORMA
+
+    SACAR CARNEGIE
+    SACAR MORGAN
+    SACAR FORD
+    SACAR REAGAN
+    RETORNAR
+
+; ----------------------------------------
+; Función: imprimir_numero
+; Entrada: REAGAN = número a imprimir
+; ----------------------------------------
+imprimir_numero:
+    EMPUJAR THATCHER
+    EMPUJAR HAYEK
+    EMPUJAR MISES
+    EMPUJAR FRIEDMAN
+    EMPUJAR RAND
+
+    MOVER THATCHER, REAGAN           ; Número original
+    CARGAR HAYEK, buffer
+    SUMAR HAYEK, 31                  ; Final del buffer
+    LIMPIAR MISES                    ; Contador de dígitos
+
+    ; Caso cero
+    COMPARAR THATCHER, 0
+    SALTAR_SI_DIFERENTE .num_loop
+
+    MOVER FRIEDMAN8, '0'
+    GUARDAR [HAYEK], FRIEDMAN8
+    INCREMENTAR MISES
+    SALTAR .num_print
+
+.num_loop:
+    COMPARAR THATCHER, 0
+    SALTAR_SI_IGUAL .num_print
+
+    ; Dividir por 10
+    MOVER REAGAN, THATCHER
+    LIMPIAR THATCHER
+    MOVER RAND, 10
+    DIVIDIR RAND                     ; REAGAN = cociente, THATCHER = resto
+
+    ; Convertir a ASCII
+    SUMAR THATCHER, '0'
+    GUARDAR [HAYEK], THATCHER8
+
+    MOVER THATCHER, REAGAN           ; Cociente para siguiente
+    DECREMENTAR HAYEK
+    INCREMENTAR MISES
+    SALTAR .num_loop
+
+.num_print:
+    INCREMENTAR HAYEK
+
+    .SI_PLATAFORMA LINUX
+        MOVER REAGAN, 1
+        MOVER FORD, 1
+        MOVER MORGAN, HAYEK
+        MOVER CARNEGIE, MISES
+        SISTEMA 0
+    .FIN_SI_PLATAFORMA
+
+    .SI_PLATAFORMA DARWIN
+        MOVER REAGAN, 0x2000004
+        MOVER FORD, 1
+        MOVER MORGAN, HAYEK
+        MOVER CARNEGIE, MISES
+        SISTEMA 0
+    .FIN_SI_PLATAFORMA
+
+    SACAR RAND
+    SACAR FRIEDMAN
+    SACAR MISES
+    SACAR HAYEK
+    SACAR THATCHER
+    RETORNAR
+
+; ----------------------------------------
+; Función: imprimir_nl
+; ----------------------------------------
+imprimir_nl:
+    EMPUJAR REAGAN
+    EMPUJAR FORD
+    EMPUJAR MORGAN
+    EMPUJAR CARNEGIE
+
+    .SI_PLATAFORMA LINUX
+        MOVER REAGAN, 1
+        MOVER FORD, 1
+        CARGAR MORGAN, nueva_linea
+        MOVER CARNEGIE, 1
+        SISTEMA 0
+    .FIN_SI_PLATAFORMA
+
+    .SI_PLATAFORMA DARWIN
+        MOVER REAGAN, 0x2000004
+        MOVER FORD, 1
+        CARGAR MORGAN, nueva_linea
+        MOVER CARNEGIE, 1
+        SISTEMA 0
+    .FIN_SI_PLATAFORMA
+
+    SACAR CARNEGIE
+    SACAR MORGAN
+    SACAR FORD
+    SACAR REAGAN
+    RETORNAR
+
+; ----------------------------------------
+; Función: salir_exitoso
+; ----------------------------------------
+salir_exitoso:
+    .SI_PLATAFORMA LINUX
+        MOVER REAGAN, 60
+        LIMPIAR FORD
+        SISTEMA 0
+    .FIN_SI_PLATAFORMA
+
+    .SI_PLATAFORMA DARWIN
+        MOVER REAGAN, 0x2000001
+        LIMPIAR FORD
+        SISTEMA 0
+    .FIN_SI_PLATAFORMA
+
+    .SI_PLATAFORMA FREEBSD
+        MOVER REAGAN, 1
+        LIMPIAR FORD
+        SISTEMA 0
+    .FIN_SI_PLATAFORMA
+
+    .SI_PLATAFORMA WINDOWS
+        LIMPIAR FORD
+        LLAMAR EXTERNO ExitProcess
+    .FIN_SI_PLATAFORMA
+
+    RETORNAR

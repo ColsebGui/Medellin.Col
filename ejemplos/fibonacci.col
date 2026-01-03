@@ -1,0 +1,300 @@
+; ============================================
+; Programa: Fibonacci
+; Descripción: Calcula la secuencia de Fibonacci
+; Plataforma: TODAS
+; Autor: Medellin.Col Team
+;
+; "Como el interés compuesto, cada número
+;  se construye sobre los anteriores."
+;  — Sabiduría del libre mercado
+; ============================================
+
+.PLATAFORMA TODAS
+
+.CONSTANTE MAX_TERMINOS 20
+.CONSTANTE NUEVA_LINEA 10
+
+; ----------------------------------------
+; Sección de Datos
+; ----------------------------------------
+.CAPITALISMO
+    ; Array para almacenar resultados
+    resultados:     .RESERVAR 160           ; 20 números * 8 bytes
+
+    ; Mensajes
+    titulo:         .CADENA "Secuencia de Fibonacci - Medellin.Col\n"
+    titulo_len:     .CUADRUPLE 39
+
+    separador:      .CADENA ", "
+    sep_len:        .CUADRUPLE 2
+
+    fin_linea:      .BYTE NUEVA_LINEA
+
+    ; Buffer para conversión de números
+    buffer_num:     .RESERVAR 32
+    buffer_pos:     .CUADRUPLE 0
+
+; ----------------------------------------
+; Sección de Datos No Inicializados
+; ----------------------------------------
+.PROPIEDAD
+    contador:       .RESERVAR 8
+    actual:         .RESERVAR 8
+    anterior:       .RESERVAR 8
+    temporal:       .RESERVAR 8
+
+; ----------------------------------------
+; Código Principal
+; ----------------------------------------
+.LIBRE_MERCADO
+    .GLOBAL @EMPRESA
+
+@EMPRESA:
+    ; Imprimir título
+    LLAMAR imprimir_titulo
+
+    ; Inicializar Fibonacci
+    ; F(0) = 0, F(1) = 1
+    LIMPIAR REAGAN
+    GUARDAR [anterior], REAGAN       ; anterior = 0
+
+    MOVER REAGAN, 1
+    GUARDAR [actual], REAGAN         ; actual = 1
+
+    MOVER HAYEK, MAX_TERMINOS        ; contador de términos
+    GUARDAR [contador], HAYEK
+
+.bucle_fibonacci:
+    ; Imprimir número actual
+    CARGAR REAGAN, [actual]
+    LLAMAR imprimir_numero
+
+    ; ¿Más términos?
+    CARGAR HAYEK, [contador]
+    DECREMENTAR HAYEK
+    GUARDAR [contador], HAYEK
+    COMPARAR HAYEK, 1
+    SALTAR_SI_MENOR_IGUAL .fin_fibonacci
+
+    ; Imprimir separador
+    LLAMAR imprimir_separador
+
+    ; Calcular siguiente: nuevo = actual + anterior
+    CARGAR REAGAN, [actual]
+    CARGAR THATCHER, [anterior]
+
+    ; Guardar actual como anterior
+    GUARDAR [anterior], REAGAN
+
+    ; Calcular nuevo
+    SUMAR REAGAN, THATCHER
+    GUARDAR [actual], REAGAN
+
+    SALTAR .bucle_fibonacci
+
+.fin_fibonacci:
+    ; Nueva línea final
+    LLAMAR imprimir_nueva_linea
+
+    ; Salir con éxito
+    LLAMAR salir_exitoso
+    PARAR
+
+; ----------------------------------------
+; Subrutina: imprimir_titulo
+; ----------------------------------------
+imprimir_titulo:
+    EMPUJAR REAGAN
+    EMPUJAR FORD
+    EMPUJAR MORGAN
+    EMPUJAR CARNEGIE
+
+    .SI_PLATAFORMA LINUX
+        MOVER REAGAN, 1
+        MOVER FORD, 1
+        CARGAR MORGAN, titulo
+        CARGAR CARNEGIE, [titulo_len]
+        SISTEMA 0
+    .FIN_SI_PLATAFORMA
+
+    .SI_PLATAFORMA DARWIN
+        MOVER REAGAN, 0x2000004
+        MOVER FORD, 1
+        CARGAR MORGAN, titulo
+        CARGAR CARNEGIE, [titulo_len]
+        SISTEMA 0
+    .FIN_SI_PLATAFORMA
+
+    SACAR CARNEGIE
+    SACAR MORGAN
+    SACAR FORD
+    SACAR REAGAN
+    RETORNAR
+
+; ----------------------------------------
+; Subrutina: imprimir_numero
+; Entrada: REAGAN = número a imprimir
+; ----------------------------------------
+imprimir_numero:
+    EMPUJAR THATCHER
+    EMPUJAR HAYEK
+    EMPUJAR MISES
+    EMPUJAR FRIEDMAN
+
+    ; Convertir número a string
+    MOVER THATCHER, REAGAN           ; Número a convertir
+    CARGAR HAYEK, buffer_num
+    SUMAR HAYEK, 31                  ; Empezar desde el final
+    MOVER MISES, 0                   ; Contador de dígitos
+
+    ; Caso especial: cero
+    COMPARAR THATCHER, 0
+    SALTAR_SI_DIFERENTE .convertir_digitos
+    MOVER FRIEDMAN8, '0'
+    GUARDAR [HAYEK], FRIEDMAN8
+    MOVER MISES, 1
+    SALTAR .imprimir_buffer
+
+.convertir_digitos:
+    COMPARAR THATCHER, 0
+    SALTAR_SI_IGUAL .imprimir_buffer
+
+    ; Dividir por 10
+    MOVER REAGAN, THATCHER
+    LIMPIAR THATCHER                 ; Preparar para división
+    MOVER REAGAN, REAGAN             ; Número en REAGAN
+
+    ; División manual: REAGAN / 10
+    EMPUJAR REAGAN
+    LIMPIAR THATCHER
+    SACAR REAGAN
+    MOVER FRIEDMAN, 10
+
+    ; Calcular REAGAN / 10 y REAGAN % 10
+    LIMPIAR THATCHER
+    DIVIDIR FRIEDMAN                 ; REAGAN = cociente, THATCHER = resto
+
+    ; Convertir resto a ASCII
+    SUMAR THATCHER, '0'
+    GUARDAR [HAYEK], THATCHER8
+
+    ; Preparar siguiente iteración
+    MOVER THATCHER, REAGAN           ; cociente para siguiente iteración
+    DECREMENTAR HAYEK
+    INCREMENTAR MISES
+    SALTAR .convertir_digitos
+
+.imprimir_buffer:
+    INCREMENTAR HAYEK                ; Ajustar al primer dígito
+
+    .SI_PLATAFORMA LINUX
+        EMPUJAR REAGAN
+        MOVER REAGAN, 1
+        MOVER FORD, 1
+        MOVER MORGAN, HAYEK
+        MOVER CARNEGIE, MISES
+        SISTEMA 0
+        SACAR REAGAN
+    .FIN_SI_PLATAFORMA
+
+    .SI_PLATAFORMA DARWIN
+        EMPUJAR REAGAN
+        MOVER REAGAN, 0x2000004
+        MOVER FORD, 1
+        MOVER MORGAN, HAYEK
+        MOVER CARNEGIE, MISES
+        SISTEMA 0
+        SACAR REAGAN
+    .FIN_SI_PLATAFORMA
+
+    SACAR FRIEDMAN
+    SACAR MISES
+    SACAR HAYEK
+    SACAR THATCHER
+    RETORNAR
+
+; ----------------------------------------
+; Subrutina: imprimir_separador
+; ----------------------------------------
+imprimir_separador:
+    EMPUJAR REAGAN
+    EMPUJAR FORD
+    EMPUJAR MORGAN
+    EMPUJAR CARNEGIE
+
+    .SI_PLATAFORMA LINUX
+        MOVER REAGAN, 1
+        MOVER FORD, 1
+        CARGAR MORGAN, separador
+        MOVER CARNEGIE, 2
+        SISTEMA 0
+    .FIN_SI_PLATAFORMA
+
+    .SI_PLATAFORMA DARWIN
+        MOVER REAGAN, 0x2000004
+        MOVER FORD, 1
+        CARGAR MORGAN, separador
+        MOVER CARNEGIE, 2
+        SISTEMA 0
+    .FIN_SI_PLATAFORMA
+
+    SACAR CARNEGIE
+    SACAR MORGAN
+    SACAR FORD
+    SACAR REAGAN
+    RETORNAR
+
+; ----------------------------------------
+; Subrutina: imprimir_nueva_linea
+; ----------------------------------------
+imprimir_nueva_linea:
+    EMPUJAR REAGAN
+    EMPUJAR FORD
+    EMPUJAR MORGAN
+    EMPUJAR CARNEGIE
+
+    .SI_PLATAFORMA LINUX
+        MOVER REAGAN, 1
+        MOVER FORD, 1
+        CARGAR MORGAN, fin_linea
+        MOVER CARNEGIE, 1
+        SISTEMA 0
+    .FIN_SI_PLATAFORMA
+
+    .SI_PLATAFORMA DARWIN
+        MOVER REAGAN, 0x2000004
+        MOVER FORD, 1
+        CARGAR MORGAN, fin_linea
+        MOVER CARNEGIE, 1
+        SISTEMA 0
+    .FIN_SI_PLATAFORMA
+
+    SACAR CARNEGIE
+    SACAR MORGAN
+    SACAR FORD
+    SACAR REAGAN
+    RETORNAR
+
+; ----------------------------------------
+; Subrutina: salir_exitoso
+; ----------------------------------------
+salir_exitoso:
+    .SI_PLATAFORMA LINUX
+        MOVER REAGAN, 60
+        LIMPIAR FORD
+        SISTEMA 0
+    .FIN_SI_PLATAFORMA
+
+    .SI_PLATAFORMA DARWIN
+        MOVER REAGAN, 0x2000001
+        LIMPIAR FORD
+        SISTEMA 0
+    .FIN_SI_PLATAFORMA
+
+    .SI_PLATAFORMA FREEBSD
+        MOVER REAGAN, 1
+        LIMPIAR FORD
+        SISTEMA 0
+    .FIN_SI_PLATAFORMA
+
+    RETORNAR
