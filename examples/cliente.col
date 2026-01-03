@@ -1,0 +1,88 @@
+; =============================================================================
+; Cliente - Sistema de gestión de clientes
+; =============================================================================
+; Demuestra: estructuras, listas, error handling, pattern matching
+; =============================================================================
+
+; Definición de un cliente
+cosa Cliente
+    texto nombre
+    texto cedula
+    numero edad
+    numero saldo
+fin cosa
+
+; Crear un nuevo cliente
+parcero crear_cliente(nombre: texto, cedula: texto, edad: numero) devuelve Cliente o error
+    ; Validar edad
+    si edad es menor que 0 entonces
+        falle "La edad no puede ser negativa"
+    listo
+
+    si edad es menor que 18 entonces
+        falle "El cliente debe ser mayor de edad"
+    listo
+
+    devuélvase con Cliente
+        nombre: nombre
+        cedula: cedula
+        edad: edad
+        saldo: 0
+    fin
+fin parcero
+
+; Depositar dinero
+parcero depositar(cliente: preste mut Cliente, monto: numero) devuelve nada o error
+    si monto es menor que 0 entonces
+        falle "El monto debe ser positivo"
+    listo
+
+    sume monto a cliente.saldo
+fin parcero
+
+; Retirar dinero
+parcero retirar(cliente: preste mut Cliente, monto: numero) devuelve nada o error
+    si monto es menor que 0 entonces
+        falle "El monto debe ser positivo"
+    listo
+
+    si monto es mayor que cliente.saldo entonces
+        falle "Saldo insuficiente"
+    listo
+
+    quite monto de cliente.saldo
+fin parcero
+
+; Mostrar información del cliente
+parcero mostrar_cliente(cliente: preste Cliente)
+    diga "=== Información del Cliente ==="
+    diga "Nombre: " mas cliente.nombre
+    diga "Cédula: " mas cliente.cedula
+    diga "Edad: " mas cliente.edad
+    diga "Saldo: $" mas cliente.saldo
+    diga "=============================="
+fin parcero
+
+parcero principal() devuelve numero
+    ; Crear un cliente
+    cuando crear_cliente("Juan Pérez", "123456789", 25) sea
+        bien(cliente):
+            ; Realizar operaciones
+            intente depositar(cliente, 1000000)
+            intente depositar(cliente, 500000)
+
+            mostrar_cliente(cliente)
+
+            cuando retirar(cliente, 200000) sea
+                bien(_): diga "Retiro exitoso"
+                mal(e): diga "Error en retiro: " mas e.mensaje
+            listo
+
+            mostrar_cliente(cliente)
+
+        mal(error):
+            diga "Error creando cliente: " mas error.mensaje
+    listo
+
+    devuélvase con 0
+fin parcero
