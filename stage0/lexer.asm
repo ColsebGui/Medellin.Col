@@ -112,12 +112,14 @@ section .data
         dq kw_fin,          3,  TOKEN_KW_FIN
         dq kw_si,           2,  TOKEN_KW_SI
         dq kw_entonces,     8,  TOKEN_KW_ENTONCES
+        dq kw_sino,         4,  TOKEN_KW_SINO
         dq kw_listo,        5,  TOKEN_KW_LISTO
         dq kw_mientras,     8,  TOKEN_KW_MIENTRAS
         dq kw_haga,         4,  TOKEN_KW_HAGA
         dq kw_desde,        5,  TOKEN_KW_DESDE
         dq kw_siendo,       6,  TOKEN_KW_SIENDO
         dq kw_hasta,        5,  TOKEN_KW_HASTA
+        dq kw_devuelvase,  10,  TOKEN_KW_DEVUELVASE
         dq kw_con,          3,  TOKEN_KW_CON
         dq kw_diga,         4,  TOKEN_KW_DIGA
         dq kw_numero,       6,  TOKEN_KW_NUMERO
@@ -145,12 +147,14 @@ section .data
     kw_fin:         db "fin", 0
     kw_si:          db "si", 0
     kw_entonces:    db "entonces", 0
+    kw_sino:        db "sino", 0
     kw_listo:       db "listo", 0
     kw_mientras:    db "mientras", 0
     kw_haga:        db "haga", 0
     kw_desde:       db "desde", 0
     kw_siendo:      db "siendo", 0
     kw_hasta:       db "hasta", 0
+    kw_devuelvase:  db "devuelvase", 0
     kw_con:         db "con", 0
     kw_diga:        db "diga", 0
     kw_numero:      db "numero", 0

@@ -1008,13 +1008,27 @@ parse_devuelvase:
     mov     byte [r12], AST_DEVUELVASE
     mov     qword [r12 + AST_DEVUELVASE_VAL], 0
 
-    ; Check for 'con'
+    ; Check for optional 'con' and skip it
     call    lexer_peek
     movzx   ecx, byte [rax + TOKEN_TYPE]
     cmp     cl, TOKEN_KW_CON
-    jne     .done
-
+    jne     .check_expr
     call    lexer_next                  ; Consume 'con'
+
+.check_expr:
+    ; Check if next token can start an expression
+    call    lexer_peek
+    movzx   ecx, byte [rax + TOKEN_TYPE]
+    cmp     cl, TOKEN_NEWLINE
+    je      .done
+    cmp     cl, TOKEN_EOF
+    je      .done
+    cmp     cl, TOKEN_KW_FIN
+    je      .done
+    cmp     cl, TOKEN_KW_LISTO
+    je      .done
+    cmp     cl, TOKEN_KW_SINO
+    je      .done
 
     ; Parse return value
     call    parse_expression
@@ -1764,7 +1778,9 @@ parse_type:
 
 .valid:
     movzx   rax, cl                     ; Return token type as type id
+    push    rax                         ; Save type before consuming token
     call    lexer_next
+    pop     rax                         ; Restore type as return value
 
 .return:
     pop     rbp

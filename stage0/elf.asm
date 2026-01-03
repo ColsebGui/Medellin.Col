@@ -506,14 +506,17 @@ write_section_headers:
 ; Input: rdi = target offset
 ; -----------------------------------------------------------------------------
 pad_to_offset:
+    push    rbx
+    mov     rbx, rdi                    ; Save target offset
+
     mov     rax, [elf_ptr]
     lea     rcx, [elf_buffer]
     sub     rax, rcx                    ; Current offset
 
-    cmp     rax, rdi
+    cmp     rax, rbx
     jge     .done
 
-    mov     rcx, rdi
+    mov     rcx, rbx
     sub     rcx, rax                    ; Bytes to pad
 
     mov     rdi, [elf_ptr]
@@ -527,8 +530,9 @@ pad_to_offset:
 
 .done:
     lea     rax, [elf_buffer]
-    add     rax, rdi                    ; rdi from pad_to_offset input
+    add     rax, rbx                    ; Use saved target offset
     mov     [elf_ptr], rax
+    pop     rbx
     ret
 
 ; -----------------------------------------------------------------------------

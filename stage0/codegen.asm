@@ -199,6 +199,10 @@ codegen_generate:
     mov     qword [func_count], 0
     mov     qword [label_counter], 0
 
+    ; Emit startup code (_start)
+    ; This calls principal() and exits with return value
+    call    emit_startup_code
+
     ; Generate code for each function
     mov     r13, [r12 + AST_PROGRAMA_FUNCS]
     mov     r14, [r12 + AST_PROGRAMA_COUNT]
@@ -257,11 +261,13 @@ gen_parcero:
 
     mov     rcx, [func_count]
     lea     rdx, [func_table]
-    mov     [rdx + rcx * 16], rax       ; Name
+    shl     rcx, 4                      ; rcx * 16
+    add     rdx, rcx
+    mov     [rdx], rax                  ; Name
     mov     rax, [code_ptr]
     lea     rbx, [code_buffer]
     sub     rax, rbx
-    mov     [rdx + rcx * 16 + 8], rax   ; Offset
+    mov     [rdx + 8], rax              ; Offset
     inc     qword [func_count]
 
     ; Calculate stack size (8 bytes per local + alignment)
@@ -1658,81 +1664,86 @@ emit_movzx_rax_al:
 ; mov [rbp + off8], rax = 48 89 45 xx (if off fits in byte)
 ; mov [rbp + off32], rax = 48 89 85 xxxxxxxx
 emit_store_rax_to_stack:
-    push    rdi
+    push    rbx
+    mov     rbx, rdi                    ; Save offset in callee-saved register
+
     mov     dil, 0x48
     call    emit_byte
     mov     dil, 0x89
     call    emit_byte
-    pop     rdi
 
     ; Check if offset fits in signed byte
-    movsx   rax, dil
-    cmp     rax, rdi
+    movsx   rax, bl
+    cmp     rax, rbx
     jne     .use_dword
 
     mov     dil, 0x45                   ; [rbp + disp8]
     call    emit_byte
-    pop     rdi
-    push    rdi
+    mov     dil, bl                     ; Emit offset as byte
+    pop     rbx
     jmp     emit_byte
 
 .use_dword:
-    push    rdi
     mov     dil, 0x85                   ; [rbp + disp32]
     call    emit_byte
-    pop     rdi
+    mov     rdi, rbx                    ; Offset for dword emit
+    pop     rbx
     jmp     emit_dword
 
 ; Load rax from [rbp + offset]
 emit_load_rax_from_stack:
-    push    rdi
+    push    rbx
+    mov     rbx, rdi                    ; Save offset in callee-saved register
+
     mov     dil, 0x48
     call    emit_byte
     mov     dil, 0x8B
     call    emit_byte
-    pop     rdi
 
-    movsx   rax, dil
-    cmp     rax, rdi
+    ; Check if offset fits in signed byte
+    movsx   rax, bl
+    cmp     rax, rbx
     jne     .use_dword
 
-    push    rdi
-    mov     dil, 0x45
+    mov     dil, 0x45                   ; [rbp + disp8]
     call    emit_byte
-    pop     rdi
+    mov     dil, bl                     ; Emit offset as byte
+    pop     rbx
     jmp     emit_byte
 
 .use_dword:
-    push    rdi
-    mov     dil, 0x85
+    mov     dil, 0x85                   ; [rbp + disp32]
     call    emit_byte
-    pop     rdi
+    mov     rdi, rbx                    ; Offset for dword emit
+    pop     rbx
     jmp     emit_dword
 
 ; Load rcx from [rbp + offset]
 emit_load_rcx_from_stack:
-    push    rdi
+    push    rbx
+    mov     rbx, rdi                    ; Save offset in callee-saved register
+
     mov     dil, 0x48
     call    emit_byte
     mov     dil, 0x8B
     call    emit_byte
-    pop     rdi
 
-    movsx   rax, dil
-    cmp     rax, rdi
+    ; Check if offset fits in signed byte
+    movsx   rax, bl
+    cmp     rax, rbx
     jne     .use_dword
 
-    push    rdi
-    mov     dil, 0x4D                   ; rcx instead of rax
+    mov     dil, 0x4D                   ; [rbp + disp8] with rcx
     call    emit_byte
-    pop     rdi
+    mov     dil, bl                     ; Emit offset as byte
+    pop     rbx
     jmp     emit_byte
 
 .use_dword:
-    push    rdi
-    mov     dil, 0x8D
+    mov     dil, 0x8D                   ; [rbp + disp32] with rcx
     call    emit_byte
-    pop     rdi
+    mov     rdi, rbx                    ; Offset for dword emit
+    pop     rbx
     jmp     emit_dword
 
 ; Store parameter register to stack
@@ -1852,6 +1863,79 @@ emit_call_func:
     xor     edi, edi                    ; Placeholder
     call    emit_dword
     pop     rdi
+    ret
+
+; -----------------------------------------------------------------------------
+; emit_startup_code - Emit program entry point
+; -----------------------------------------------------------------------------
+; Emits:
+;   xor rbp, rbp          ; Clear frame pointer
+;   and rsp, -16          ; Align stack
+;   call principal        ; Call main (offset will be patched)
+;   mov rdi, rax          ; Exit code = return value
+;   mov eax, 60           ; sys_exit
+;   syscall
+; -----------------------------------------------------------------------------
+emit_startup_code:
+    push    rbp
+    mov     rbp, rsp
+    push    rbx
+
+    ; xor rbp, rbp = 48 31 ED
+    mov     dil, 0x48
+    call    emit_byte
+    mov     dil, 0x31
+    call    emit_byte
+    mov     dil, 0xED
+    call    emit_byte
+
+    ; and rsp, -16 = 48 83 E4 F0
+    mov     dil, 0x48
+    call    emit_byte
+    mov     dil, 0x83
+    call    emit_byte
+    mov     dil, 0xE4
+    call    emit_byte
+    mov     dil, 0xF0
+    call    emit_byte
+
+    ; call principal (rel32) = E8 xx xx xx xx
+    ; Startup code layout:
+    ;   0-2:   xor rbp, rbp (3 bytes)
+    ;   3-6:   and rsp, -16 (4 bytes)
+    ;   7-11:  call (5 bytes)
+    ;   12-14: mov rdi, rax (3 bytes)
+    ;   15-19: mov eax, 60 (5 bytes)
+    ;   20-21: syscall (2 bytes)
+    ; Principal starts at offset 22
+    ; Call ends at offset 12, so relative offset = 22 - 12 = 10
+    mov     dil, 0xE8
+    call    emit_byte
+    mov     edi, 10                     ; Offset to principal
+    call    emit_dword
+
+    ; mov rdi, rax = 48 89 C7
+    mov     dil, 0x48
+    call    emit_byte
+    mov     dil, 0x89
+    call    emit_byte
+    mov     dil, 0xC7
+    call    emit_byte
+
+    ; mov eax, 60 = B8 3C 00 00 00
+    mov     dil, 0xB8
+    call    emit_byte
+    mov     edi, 60
+    call    emit_dword
+
+    ; syscall = 0F 05
+    mov     dil, 0x0F
+    call    emit_byte
+    mov     dil, 0x05
+    call    emit_byte
+
+    pop     rbx
+    pop     rbp
     ret
 
 ; =============================================================================
