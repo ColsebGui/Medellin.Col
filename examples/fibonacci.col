@@ -1,0 +1,44 @@
+; =============================================================================
+; Fibonacci - Secuencia de Fibonacci
+; =============================================================================
+; Calcula números de la secuencia de Fibonacci
+; Demuestra: funciones, recursión, condicionales
+; =============================================================================
+
+; Fibonacci recursivo
+parcero fibonacci(n: numero) devuelve numero
+    si n es menor que 2 entonces
+        devuélvase con n
+    listo
+
+    devuélvase con fibonacci(n menos 1) mas fibonacci(n menos 2)
+fin parcero
+
+; Fibonacci iterativo (más eficiente)
+parcero fibonacci_iterativo(n: numero) devuelve numero
+    si n es menor que 2 entonces
+        devuélvase con n
+    listo
+
+    numero anterior es 0
+    numero actual es 1
+
+    desde i siendo 2 hasta n haga
+        numero siguiente es anterior mas actual
+        anterior es actual
+        actual es siguiente
+    listo
+
+    devuélvase con actual
+fin parcero
+
+parcero principal() devuelve numero
+    diga "Secuencia de Fibonacci:"
+
+    desde i siendo 0 hasta 20 haga
+        numero fib es fibonacci_iterativo(i)
+        diga fib
+    listo
+
+    devuélvase con 0
+fin parcero

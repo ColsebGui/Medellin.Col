@@ -1,0 +1,12 @@
+; =============================================================================
+; Hola Mundo - Primer programa en Medellin.Col
+; =============================================================================
+; El programa más simple: imprime un saludo al mundo.
+; =============================================================================
+
+parcero principal() devuelve numero
+    diga "¡Hola Mundo desde Medellin.Col!"
+    diga "El lenguaje de los emprendedores colombianos."
+
+    devuélvase con 0
+fin parcero

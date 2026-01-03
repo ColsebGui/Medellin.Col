@@ -1,0 +1,402 @@
+; =============================================================================
+; MEDELLIN.COL - FORMAL GRAMMAR
+; =============================================================================
+; Extended Backus-Naur Form (EBNF) specification
+; Colombian Spanish systems programming language
+; =============================================================================
+
+; -----------------------------------------------------------------------------
+; PROGRAM STRUCTURE
+; -----------------------------------------------------------------------------
+
+programa            = { declaracion } ;
+
+declaracion         = decl_importar
+                    | decl_cosa
+                    | decl_tipo
+                    | decl_rasgo
+                    | decl_parcero
+                    | decl_constante
+                    ;
+
+; -----------------------------------------------------------------------------
+; IMPORTS
+; -----------------------------------------------------------------------------
+
+decl_importar       = "traiga" ruta_modulo [ "con" "capacidades" lista_capacidades ] ;
+
+ruta_modulo         = identificador { "/" identificador } ;
+
+lista_capacidades   = "[" [ capacidad { "," capacidad } ] "]" ;
+
+capacidad           = identificador [ "." identificador [ "(" literal_texto ")" ] ] ;
+
+; -----------------------------------------------------------------------------
+; TYPE DECLARATIONS
+; -----------------------------------------------------------------------------
+
+decl_cosa           = "cosa" identificador [ params_tipo ] NEWLINE
+                      { campo }
+                      "fin" "cosa" ;
+
+campo               = identificador ":" tipo NEWLINE ;
+
+decl_tipo           = "tipo" identificador [ params_tipo ] "es" definicion_tipo ;
+
+definicion_tipo     = tipo_suma
+                    | tipo_alias
+                    | tipo_refinado
+                    | tipo_lineal
+                    ;
+
+tipo_suma           = NEWLINE { variante } "fin" "tipo" ;
+
+variante            = identificador [ "(" campos_variante ")" ] NEWLINE ;
+
+campos_variante     = campo_variante { "," campo_variante } ;
+
+campo_variante      = identificador ":" tipo ;
+
+tipo_alias          = tipo ;
+
+tipo_refinado       = tipo "donde" expresion ;
+
+tipo_lineal         = "lineal" tipo ;
+
+; -----------------------------------------------------------------------------
+; TRAITS
+; -----------------------------------------------------------------------------
+
+decl_rasgo          = "rasgo" identificador [ params_tipo ] NEWLINE
+                      { firma_parcero }
+                      "fin" "rasgo" ;
+
+firma_parcero       = "parcero" identificador "(" [ parametros ] ")"
+                      [ "devuelve" tipo ] NEWLINE ;
+
+; -----------------------------------------------------------------------------
+; FUNCTIONS
+; -----------------------------------------------------------------------------
+
+decl_parcero        = [ anotaciones ]
+                      "parcero" identificador [ params_tipo ]
+                      "(" [ parametros ] ")"
+                      [ "devuelve" tipo ]
+                      [ "o" "error" ]
+                      [ "con" "efecto" identificador ]
+                      [ "sin" "efectos" ]
+                      [ "requiere" lista_capacidades ]
+                      NEWLINE
+                      bloque
+                      "fin" "parcero" ;
+
+anotaciones         = { "@" identificador [ "(" args_anotacion ")" ] NEWLINE } ;
+
+args_anotacion      = expresion { "," expresion } ;
+
+parametros          = parametro { "," parametro } ;
+
+parametro           = [ modificador_param ] identificador ":" tipo ;
+
+modificador_param   = "preste" [ "mut" ] | "tome" ;
+
+params_tipo         = "[" param_tipo { "," param_tipo } "]" ;
+
+param_tipo          = identificador [ ":" restriccion_tipo ] ;
+
+restriccion_tipo    = identificador { "+" identificador } ;
+
+; -----------------------------------------------------------------------------
+; CONSTANTS
+; -----------------------------------------------------------------------------
+
+decl_constante      = "constante" identificador "es" expresion ;
+
+; -----------------------------------------------------------------------------
+; STATEMENTS
+; -----------------------------------------------------------------------------
+
+bloque              = { sentencia } ;
+
+sentencia           = sent_variable
+                    | sent_asignacion
+                    | sent_si
+                    | sent_mientras
+                    | sent_desde
+                    | sent_para_cada
+                    | sent_cuando
+                    | sent_region
+                    | sent_devuelvase
+                    | sent_falle
+                    | sent_diga
+                    | sent_intente
+                    | sent_asuma
+                    | sent_expresion
+                    ;
+
+sent_variable       = tipo identificador "es" expresion NEWLINE ;
+
+sent_asignacion     = lugar "es" expresion NEWLINE
+                    | "sume" expresion "a" lugar NEWLINE
+                    | "quite" expresion "de" lugar NEWLINE
+                    ;
+
+lugar               = identificador { "." identificador | "[" expresion "]" } ;
+
+sent_si             = "si" expresion "entonces" NEWLINE
+                      bloque
+                      { "si" "no" "si" expresion "entonces" NEWLINE bloque }
+                      [ "si" "no" NEWLINE bloque ]
+                      "listo" ;
+
+sent_mientras       = "mientras" expresion "haga" NEWLINE
+                      bloque
+                      "listo" ;
+
+sent_desde          = "desde" identificador "siendo" expresion "hasta" expresion
+                      [ "paso" expresion ] "haga" NEWLINE
+                      bloque
+                      "listo" ;
+
+sent_para_cada      = "para" "cada" identificador "en" expresion "haga" NEWLINE
+                      bloque
+                      "listo" ;
+
+sent_cuando         = "cuando" expresion "sea" NEWLINE
+                      { patron ":" bloque }
+                      "listo" ;
+
+patron              = patron_literal
+                    | patron_variante
+                    | patron_comodin
+                    | patron_variable
+                    ;
+
+patron_literal      = literal ;
+
+patron_variante     = identificador [ "(" patron_campos ")" ] [ "si" expresion ] ;
+
+patron_campos       = patron_campo { "," patron_campo } ;
+
+patron_campo        = identificador ;
+
+patron_comodin      = "_" ;
+
+patron_variable     = identificador ;
+
+sent_region         = "region" [ identificador ] "haga" NEWLINE
+                      bloque
+                      "fin" "region" ;
+
+sent_devuelvase     = "devuélvase" "con" expresion NEWLINE
+                    | "devuélvase" NEWLINE
+                    ;
+
+sent_falle          = "falle" expresion NEWLINE ;
+
+sent_diga           = "diga" expresion NEWLINE ;
+
+sent_intente        = "intente" NEWLINE
+                      bloque
+                      "si" "falla" [ "con" identificador ] NEWLINE
+                      bloque
+                      [ "siempre" "haga" NEWLINE bloque ]
+                      "fin" "intente" ;
+
+sent_asuma          = "asuma" expresion NEWLINE ;
+
+sent_expresion      = expresion NEWLINE ;
+
+; -----------------------------------------------------------------------------
+; EXPRESSIONS
+; -----------------------------------------------------------------------------
+
+expresion           = expr_o ;
+
+expr_o              = expr_y { "o" expr_y } ;
+
+expr_y              = expr_comparacion { "y" expr_comparacion } ;
+
+expr_comparacion    = expr_aritmetica [ op_comparacion expr_aritmetica ] ;
+
+op_comparacion      = "es" "igual" "a"
+                    | "no" "es"
+                    | "es" "mayor" "que"
+                    | "es" "menor" "que"
+                    | "es" "al" "menos"
+                    | "es" "máximo"
+                    | ">=" | "<=" | ">" | "<" | "==" | "!="
+                    ;
+
+expr_aritmetica     = expr_termino { op_suma expr_termino } ;
+
+op_suma             = "mas" | "menos" | "+" | "-" ;
+
+expr_termino        = expr_unaria { op_mult expr_unaria } ;
+
+op_mult             = "por" | "entre" | "modulo" | "*" | "/" | "%" ;
+
+expr_unaria         = [ op_unario ] expr_primaria ;
+
+op_unario           = "no" | "-" | "!" ;
+
+expr_primaria       = literal
+                    | identificador
+                    | expr_llamada
+                    | expr_acceso
+                    | expr_indice
+                    | expr_construccion
+                    | expr_lista
+                    | expr_tiene_valor
+                    | expr_intente
+                    | "(" expresion ")"
+                    ;
+
+expr_llamada        = identificador [ params_tipo_inst ] "(" [ argumentos ] ")" ;
+
+params_tipo_inst    = "[" tipo { "," tipo } "]" ;
+
+argumentos          = expresion { "," expresion } ;
+
+expr_acceso         = expr_primaria "." identificador ;
+
+expr_indice         = expr_primaria "[" expresion "]" ;
+
+expr_construccion   = identificador NEWLINE
+                      { identificador ":" expresion NEWLINE }
+                      "fin" ;
+
+expr_lista          = "[" [ expresion { "," expresion } ] "]" ;
+
+expr_tiene_valor    = expresion "tiene" "valor" ;
+
+expr_intente        = "intente" expresion ;
+
+; -----------------------------------------------------------------------------
+; TYPES
+; -----------------------------------------------------------------------------
+
+tipo                = tipo_basico
+                    | tipo_generico
+                    | tipo_quizas
+                    | tipo_resultado
+                    | tipo_lista
+                    | tipo_arreglo
+                    | tipo_mapa
+                    | tipo_conjunto
+                    | tipo_tupla
+                    | tipo_funcion
+                    | tipo_prestamo
+                    ;
+
+tipo_basico         = "numero" | "numero8" | "numero16" | "numero32" | "numero64"
+                    | "natural" | "natural8" | "natural16" | "natural32" | "natural64"
+                    | "decimal" | "decimal32" | "decimal64"
+                    | "texto"
+                    | "booleano"
+                    | "byte"
+                    | "nada"
+                    | identificador
+                    ;
+
+tipo_generico       = identificador "[" tipo { "," tipo } "]" ;
+
+tipo_quizas         = "quizas" tipo ;
+
+tipo_resultado      = tipo "o" "error" ;
+
+tipo_lista          = "lista" "de" tipo ;
+
+tipo_arreglo        = "arreglo" "[" expresion "]" "de" tipo ;
+
+tipo_mapa           = "mapa" "de" tipo "a" tipo ;
+
+tipo_conjunto       = "conjunto" "de" tipo ;
+
+tipo_tupla          = "(" tipo { "," tipo } ")" ;
+
+tipo_funcion        = "parcero" "(" [ tipos_param ] ")" [ "devuelve" tipo ] ;
+
+tipos_param         = tipo { "," tipo } ;
+
+tipo_prestamo       = "preste" [ "mut" ] tipo ;
+
+; -----------------------------------------------------------------------------
+; LITERALS
+; -----------------------------------------------------------------------------
+
+literal             = literal_numero
+                    | literal_decimal
+                    | literal_texto
+                    | literal_booleano
+                    | literal_nada
+                    ;
+
+literal_numero      = DIGITO { DIGITO } [ sufijo_numero ] ;
+
+sufijo_numero       = "n8" | "n16" | "n32" | "n64"
+                    | "u8" | "u16" | "u32" | "u64" ;
+
+literal_decimal     = DIGITO { DIGITO } "." DIGITO { DIGITO } [ sufijo_decimal ] ;
+
+sufijo_decimal      = "d32" | "d64" ;
+
+literal_texto       = '"' { CARACTER | secuencia_escape } '"' ;
+
+secuencia_escape    = "\\" ( "n" | "r" | "t" | "\\" | '"' | "0" ) ;
+
+literal_booleano    = "verdad" | "falso" ;
+
+literal_nada        = "nada" ;
+
+; -----------------------------------------------------------------------------
+; IDENTIFIERS
+; -----------------------------------------------------------------------------
+
+identificador       = ( LETRA | "_" ) { LETRA | DIGITO | "_" } ;
+
+; -----------------------------------------------------------------------------
+; LEXICAL ELEMENTS
+; -----------------------------------------------------------------------------
+
+LETRA               = "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i"
+                    | "j" | "k" | "l" | "m" | "n" | "ñ" | "o" | "p" | "q"
+                    | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z"
+                    | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I"
+                    | "J" | "K" | "L" | "M" | "N" | "Ñ" | "O" | "P" | "Q"
+                    | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
+                    | "á" | "é" | "í" | "ó" | "ú" | "ü"
+                    | "Á" | "É" | "Í" | "Ó" | "Ú" | "Ü"
+                    ;
+
+DIGITO              = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+
+CARACTER            = ? any Unicode character except '"' and '\\' ? ;
+
+NEWLINE             = ? newline character (LF or CRLF) ? ;
+
+COMENTARIO          = ";" { CARACTER } NEWLINE ;
+
+ESPACIO             = " " | "\t" ;
+
+; -----------------------------------------------------------------------------
+; CONCURRENCY (Phase 4)
+; -----------------------------------------------------------------------------
+
+decl_tarea          = "tarea" identificador "(" [ parametros ] ")" NEWLINE
+                      bloque
+                      "fin" "tarea" ;
+
+sent_paralelo       = "paralelo" "haga" NEWLINE
+                      bloque
+                      "fin" "paralelo" ;
+
+sent_enviar         = "envie" expresion "por" expresion NEWLINE ;
+
+sent_recibir        = identificador "es" "reciba" "de" expresion NEWLINE ;
+
+expr_canal          = "nuevo" "canal" ;
+
+; -----------------------------------------------------------------------------
+; END OF GRAMMAR
+; -----------------------------------------------------------------------------
