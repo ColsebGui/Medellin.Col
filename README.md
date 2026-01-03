@@ -203,6 +203,106 @@ fin parcero
 
 ---
 
+## Research Innovations
+
+Medellin.Col introduces novel combinations of programming language theory:
+
+### Region-Based Memory (Simpler than Rust)
+
+No lifetime annotations. 80% automatic inference, 20% guided.
+
+```
+; AUTOMATIC - compiler infers region from scope
+parcero procesar()
+    texto local es "temporal"
+    ; Compiler: allocate in function region, free on return
+fin parcero
+
+; GUIDED - explicit for complex cases
+region persistente haga
+    Lista de Cliente clientes es cargar_clientes()
+fin region
+```
+
+**Algorithm:** Scope-based allocation + escape analysis. If value escapes, promote to outer region.
+
+### Verified Assertions (No Traditional Unsafe)
+
+Instead of disabling safety, assert facts with runtime verification:
+
+```
+; NOT Rust-style unsafe blocks
+; Instead: assertions that insert runtime checks
+
+numero i es calculo_complejo()
+asuma i >= 0 y i < 100    ; Developer asserts
+arreglo[i]                 ; Compiler inserts runtime check
+
+; Compiler message:
+; NOTA: Se insertó verificación en tiempo de ejecución.
+```
+
+**Philosophy:** You can bypass static proof, but not safety checking.
+
+### Tiered SMT Verification
+
+Refinement type checking with predictable performance:
+
+| Tier | Time | Example | Action |
+|------|------|---------|--------|
+| Trivial | < 1ms | `5 > 0` | Pattern match, no SMT |
+| Simple | < 100ms | `x + y < 100` | SMT with timeout |
+| Complex | < 5s | Quantified properties | Background verify, cache |
+| Unprovable | - | SMT timeout | `asuma` + runtime check |
+
+### Hierarchical Capabilities
+
+Coarse-grained by default, refinable when needed:
+
+```
+; Level 1: Coarse (common)
+parcero procesar() requiere [Archivos, Red]
+
+; Level 2: Subcategory
+parcero solo_lectura() requiere [Archivos.leer]
+
+; Level 3: Specific (high security)
+parcero restringido() requiere [Archivos.leer("/config/")]
+```
+
+### Affine Default, Linear Opt-in
+
+Most values are affine (can drop). Resources opt-in to linear (must use):
+
+```
+; AFFINE (default) - can drop
+numero x es 5    ; OK to ignore
+
+; LINEAR (opt-in) - must use
+tipo Archivo es lineal
+Archivo f es abrir("x.txt")
+; Must call cerrar(f) or descartar(f)
+```
+
+### Inferred Effects
+
+Effects are inferred automatically, optionally annotated:
+
+```
+; INFERRED - compiler detects IO
+parcero ejemplo()
+    diga "hola"    ; Compiler: this has IO effect
+fin parcero
+
+; ENFORCED - explicit purity requirement
+parcero pura(x: numero) devuelve numero sin efectos
+    ; diga "debug" ← ERROR: no effects allowed
+    devuélvase con x por 2
+fin parcero
+```
+
+---
+
 ## Comparison
 
 | Feature | C | Go | Rust | Medellin.Col |
@@ -303,6 +403,19 @@ mi_proyecto/
 └── ejemplos/            # Examples
     └── demo.col
 ```
+
+---
+
+## Thesis
+
+> **"A systems programming language can be memory-safe, logic-safe, and simple simultaneously by combining region-based memory management with refinement types and capability security, eliminating the need for unsafe escape hatches through a pure assembly foundation."**
+
+This is Medellin.Col's research contribution. We prove that:
+
+1. **Simpler than Rust** — Region-based memory without lifetime annotations
+2. **Safer than Rust** — No `unsafe` blocks, verified assertions only
+3. **Smarter than all** — Refinement types catch logic errors
+4. **Secure by design** — Capability-based access control
 
 ---
 

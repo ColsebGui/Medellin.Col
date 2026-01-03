@@ -26,6 +26,153 @@ A phased approach to building a systems programming language from pure assembly 
 
 ---
 
+## Design Decisions
+
+These are the core technical decisions based on programming language theory research.
+
+### Memory Model: Region-Based (80% Auto, 20% Guided)
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Primary mechanism | Scope-based regions | Simpler than Rust lifetimes |
+| Inference level | 80% automatic | Escape analysis handles most cases |
+| Escape handling | Promote to outer region | Automatic, no annotation needed |
+| Explicit regions | `region nombre haga` | For complex lifetime requirements |
+| Lifetime annotations | None | Avoided entirely via scope rules |
+
+**Algorithm:**
+1. Default: allocate in innermost scope
+2. Escape analysis: if value escapes, promote to outer region
+3. Return values: allocate in caller-provided region
+4. Explicit `region` blocks: developer override
+
+### Type System: Affine Default, Linear Opt-in
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Default ownership | Affine (use ≤ 1) | Matches Rust, lower friction |
+| Resource types | Linear (use = 1) | Prevents leaks for files, connections |
+| Syntax | `tipo X es lineal` | Explicit opt-in |
+| Drop handling | `descartar(x)` | Explicit for linear values |
+
+**Linear types list:**
+- `Archivo` (files)
+- `Conexion` (network connections)
+- `Mutex` (locks)
+- `Transaccion` (database transactions)
+
+### Refinement Types: Tiered SMT Verification
+
+| Tier | Timeout | Predicate Class | Action |
+|------|---------|-----------------|--------|
+| 1 | < 1ms | Constants (`5 > 0`) | Pattern matching |
+| 2 | < 100ms | Linear arithmetic | SMT solver |
+| 3 | < 5s | Complex/quantified | Background + cache |
+| 4 | Timeout | Unprovable | `asuma` + runtime check |
+
+**SMT Integration:**
+- Primary solver: Z3 (well-tested, good performance)
+- Fallback: CVC5 (for edge cases)
+- Cache: Function-level, invalidated on signature change
+
+### Effect System: Inferred with Optional Annotation
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Default mode | Inferred | Reduce annotation burden |
+| Purity enforcement | `sin efectos` keyword | Opt-in when needed |
+| Effect categories | `IO`, `Estado`, `Falla` | Simple, covers 95% of cases |
+| Effect polymorphism | Yes (Phase 4) | For generic code |
+
+### Capability System: Hierarchical
+
+```
+Archivos
+├── Archivos.leer
+├── Archivos.escribir
+├── Archivos.crear
+└── Archivos.borrar
+
+Red
+├── Red.tcp
+├── Red.udp
+├── Red.http
+└── Red.dns
+
+Sistema
+├── Sistema.ambiente
+├── Sistema.proceso
+├── Sistema.señales
+└── Sistema.reloj
+
+Aleatorio
+Tiempo
+```
+
+**Default:** Coarse-grained (`[Archivos]`)
+**Refinement:** Subcategories when needed (`[Archivos.leer]`)
+
+### Escape Hatch: Verified Assertions Only
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Traditional `unsafe` | **Not provided** | Undermines guarantees |
+| Bypass mechanism | `asuma` keyword | Assert with runtime check |
+| Runtime behavior | Panic on violation | Safety preserved |
+| Auditability | `grep asuma` | Easy to find all assertions |
+
+**What `asuma` does:**
+```
+asuma x > 0    ; Developer asserts
+; Compiler inserts: if !(x > 0) then panic("Assertion failed: x > 0")
+```
+
+### Termination Checking: Opt-in Only
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Default | No termination checking | Servers, games run forever |
+| Opt-in syntax | `@total` annotation | For pure functions |
+| Mechanism | Structural recursion check | Decidable for common patterns |
+
+### Error Messages: Counterexample-Driven
+
+| Component | Approach |
+|-----------|----------|
+| Location | File, line, column with context |
+| Explanation | Counterexample when available |
+| Suggestions | Multiple fix options |
+| Personality | Professional, Colombian-friendly |
+
+### Incremental Compilation: Function-Level Caching
+
+| Change Type | Recheck Scope |
+|-------------|---------------|
+| Function body only | Just that function |
+| Function signature | Function + direct callers |
+| Type definition | All users of type |
+| Import change | Importing module only |
+
+**Target:** < 100ms for typical single-file edits.
+
+### Built-in Types (Assembly-Implemented)
+
+These require raw memory access, implemented in assembly:
+
+| Type | Reason |
+|------|--------|
+| `arreglo[N] de T` | Fixed-size, stack allocation |
+| `lista de T` | Dynamic array, heap management |
+| `texto` | String with UTF-8, complex layout |
+| `mapa de K a V` | Hash buckets, raw memory |
+| `conjunto de T` | Same as map |
+| `canal de T` | Concurrency primitive |
+| `mutex` | Synchronization primitive |
+
+All other data structures built in Medellin.Col using these primitives.
+
+---
+
 ## Phase 1: Foundation
 
 **Goal:** Establish specifications, design decisions, and minimal runtime.
@@ -655,6 +802,62 @@ imprimir_texto:
 | Learning curve | Easier than Rust |
 | Error message quality | Best in class |
 | Documentation | Complete for all features |
+
+---
+
+## Research Foundation
+
+### Theoretical Basis
+
+| Feature | Research Basis | Key Papers/Systems |
+|---------|---------------|-------------------|
+| Region-based memory | Tofte-Talpin (1994) | MLKit, Cyclone |
+| Refinement types | Liquid Types (2008) | Liquid Haskell, F* |
+| Effect system | Algebraic Effects | Koka, Eff, Frank |
+| Capability security | Object-Capability Model | E, Pony, Wasm |
+| Linear types | Linear Logic (Girard 1987) | Linear Haskell, Mezzo |
+| Ownership | Affine Types | Rust, Clean |
+
+### Novel Contribution
+
+Medellin.Col's thesis:
+
+> "A systems programming language can be memory-safe, logic-safe, and simple simultaneously by combining region-based memory management with refinement types and capability security, eliminating the need for unsafe escape hatches through a pure assembly foundation."
+
+**What makes this novel:**
+
+1. **Combination** — No existing language combines all these features
+2. **No unsafe** — First systems language to completely eliminate unsafe blocks
+3. **Region + Refinement** — Region-based memory with refinement type integration
+4. **Pure bootstrap** — Self-sufficient from assembly, no C dependency
+5. **Accessibility** — Spanish syntax for Latin American developer community
+
+### Research Questions Resolved
+
+| Question | Decision | Rationale |
+|----------|----------|-----------|
+| Region inference automation | 80% auto, 20% guided | Escape analysis covers most cases |
+| SMT timeout handling | Tiered (1ms → 5s → runtime) | Predictable compilation |
+| Error message strategy | Counterexample-driven | Shows concrete failure case |
+| Incremental compilation | Function-level caching | < 100ms for typical edits |
+| Built-in type coverage | 7 primitives in assembly | Minimal set for stdlib |
+| Escape hatch design | `asuma` assertions only | No raw unsafe, runtime checked |
+| Linear vs affine | Affine default, linear opt-in | Lower friction for most code |
+| Capability granularity | Hierarchical (coarse → fine) | Start simple, refine when needed |
+| Termination checking | Opt-in with `@total` | Most programs don't terminate |
+| Effect inference | Inferred, optional annotation | Reduce annotation burden |
+
+### Open Research Areas
+
+These remain as future research directions:
+
+| Area | Question | Priority |
+|------|----------|----------|
+| Region optimization | Minimize region count while preserving semantics | Medium |
+| SMT caching | Cross-project predicate caching | Low |
+| Effect handlers | Full algebraic effect support | Phase 4+ |
+| Dependent types | Beyond refinements to full dependent types | Future |
+| Formal verification | Machine-checked proofs of compiler correctness | Future |
 
 ---
 
