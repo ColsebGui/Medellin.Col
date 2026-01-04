@@ -3,9 +3,10 @@
 ; =============================================================================
 ; Tokenizer for Medellin.Col source code
 ; Reads from stdin using leer_byte()
+; Outputs token types one per line (for testing)
 ; =============================================================================
 
-; Token types
+; Token types - used by both lexer and parser
 ; TOKEN_EOF       = 0
 ; TOKEN_NUMERO    = 1     (number literal)
 ; TOKEN_IDENT     = 10
@@ -21,13 +22,38 @@
 ; TOKEN_DEVUELVE  = 120
 ; TOKEN_ES        = 117
 ; TOKEN_NUMERO_KW = 118   (type keyword)
+; TOKEN_ARREGLO   = 119
 ; TOKEN_MAS       = 20
 ; TOKEN_MENOS     = 21
 ; TOKEN_POR       = 22
 ; TOKEN_ENTRE     = 23
 ; TOKEN_ES_IGUAL  = 30
+; TOKEN_ES_MAYOR  = 32
+; TOKEN_ES_MENOR  = 33
+; TOKEN_MAYOR_IGUAL = 34
+; TOKEN_MENOR_IGUAL = 35
 ; TOKEN_PAREN_IZQ = 50
 ; TOKEN_PAREN_DER = 51
+; TOKEN_BRACKET_IZQ = 52
+; TOKEN_BRACKET_DER = 53
+; TOKEN_DOS_PUNTOS = 54
+; TOKEN_COMA      = 55
+; TOKEN_Y         = 60
+; TOKEN_O         = 61
+; TOKEN_NO        = 62
+; TOKEN_DE        = 121
+
+; ASCII codes:
+; '0'=48, '9'=57
+; 'A'=65, 'Z'=90, 'a'=97, 'z'=122, '_'=95
+; ' '=32, '\t'=9, '\n'=10, '\r'=13
+; '('=40, ')'=41, '['=91, ']'=93
+; ':'=58, ','=44, ';'=59
+; Character codes for keywords:
+; 'a'=97, 'b'=98, 'c'=99, 'd'=100, 'e'=101, 'f'=102, 'g'=103, 'h'=104
+; 'i'=105, 'j'=106, 'k'=107, 'l'=108, 'm'=109, 'n'=110, 'o'=111, 'p'=112
+; 'q'=113, 'r'=114, 's'=115, 't'=116, 'u'=117, 'v'=118, 'w'=119, 'x'=120
+; 'y'=121, 'z'=122
 
 ; -----------------------------------------------------------------------------
 ; Character classification helpers
@@ -80,94 +106,501 @@ parcero lex_is_whitespace(c: numero) devuelve numero
 fin parcero
 
 ; -----------------------------------------------------------------------------
-; Simple keyword matching functions
-; Each returns the token type if matched, 0 otherwise
-; Using character codes directly:
-; 's'=115, 'i'=105, 'n'=110, 'o'=111, 'e'=101, 'f'=102
-; 'a'=97, 'r'=114, 'g'=103, 'l'=108, 't'=116
-; 'p'=112, 'c'=99, 'd'=100, 'v'=118, 'u'=117, 'm'=109, 'h'=104
+; Output helpers: write a number as decimal digits
 ; -----------------------------------------------------------------------------
 
-; Match keyword with given characters and length
-; This approach uses simpler inline checks
-
-parcero test_char_helpers() devuelve numero
-    numero result
-    result es 0
-
-    ; Test is_digit
-    result es result mas lex_is_digit(53)     ; '5' -> 1
-    result es result mas lex_is_digit(65)     ; 'A' -> 0
-
-    ; Test is_alpha
-    result es result mas lex_is_alpha(65)     ; 'A' -> 1
-    result es result mas lex_is_alpha(53)     ; '5' -> 0
-
-    ; Test is_whitespace
-    result es result mas lex_is_whitespace(32) ; ' ' -> 1
-    result es result mas lex_is_whitespace(65) ; 'A' -> 0
-
-    ; Expected: 1 + 0 + 1 + 0 + 1 + 0 = 3
-    devuelvase result
+parcero write_digit(n: numero) devuelve numero
+    numero dummy
+    dummy es escribir_byte(n mas 48)
+    devuelvase 0
 fin parcero
 
-; Simple test: read a few bytes and return their sum
-parcero test_read_bytes() devuelve numero
-    numero a
-    numero b
-    numero c
+parcero write_number(n: numero) devuelve numero
+    numero dummy
+    numero d100
+    numero d10
 
-    a es leer_byte()
-    b es leer_byte()
-    c es leer_byte()
-
-    devuelvase a mas b mas c
-fin parcero
-
-; Test simple tokenization: count how many 'p' characters (ASCII 112)
-parcero count_letter_p() devuelve numero
-    numero c
-    numero count
-    count es 0
-
-    c es leer_byte()
-    mientras c es_mayor 0 haga
-        si c es_igual 112 entonces
-            count es count mas 1
-        listo
-        c es leer_byte()
+    ; Handle 3-digit numbers (100-999)
+    si n es_mayor 99 entonces
+        d100 es n entre 100
+        n es n menos (d100 por 100)
+        dummy es write_digit(d100)
+        d10 es n entre 10
+        n es n menos (d10 por 10)
+        dummy es write_digit(d10)
+        dummy es write_digit(n)
+        dummy es escribir_byte(10)
+        devuelvase 0
     listo
-
-    devuelvase count
+    ; Handle 2-digit numbers (10-99)
+    si n es_mayor 9 entonces
+        d10 es n entre 10
+        n es n menos (d10 por 10)
+        dummy es write_digit(d10)
+        dummy es write_digit(n)
+        dummy es escribir_byte(10)
+        devuelvase 0
+    listo
+    ; Handle 1-digit numbers (0-9)
+    dummy es write_digit(n)
+    dummy es escribir_byte(10)
+    devuelvase 0
 fin parcero
 
-; Test: count words (sequences of alphanumeric characters)
-parcero count_words() devuelve numero
-    numero c
-    numero count
-    numero in_word
+; -----------------------------------------------------------------------------
+; Keyword matching using length + first/last character heuristics
+; Returns token type or 10 for identifier
+; -----------------------------------------------------------------------------
 
-    count es 0
-    in_word es 0
+; For 2-char keywords: si, es, de, no
+parcero match_kw2(c0: numero, c1: numero) devuelve numero
+    ; "si" = 115, 105 -> 102
+    si c0 es_igual 115 y c1 es_igual 105 entonces
+        devuelvase 102
+    listo
+    ; "es" = 101, 115 -> 117
+    si c0 es_igual 101 y c1 es_igual 115 entonces
+        devuelvase 117
+    listo
+    ; "de" = 100, 101 -> 121
+    si c0 es_igual 100 y c1 es_igual 101 entonces
+        devuelvase 121
+    listo
+    ; "no" = 110, 111 -> 62
+    si c0 es_igual 110 y c1 es_igual 111 entonces
+        devuelvase 62
+    listo
+    devuelvase 10
+fin parcero
 
-    c es leer_byte()
-    mientras c es_mayor 0 haga
-        si lex_is_alnum(c) es_igual 1 entonces
-            si in_word es_igual 0 entonces
-                count es count mas 1
-                in_word es 1
+; For 3-char keywords: fin, mas, por
+parcero match_kw3(c0: numero, c1: numero, c2: numero) devuelve numero
+    ; "fin" = 102, 105, 110 -> 101
+    si c0 es_igual 102 y c1 es_igual 105 y c2 es_igual 110 entonces
+        devuelvase 101
+    listo
+    ; "mas" = 109, 97, 115 -> 20
+    si c0 es_igual 109 y c1 es_igual 97 y c2 es_igual 115 entonces
+        devuelvase 20
+    listo
+    ; "por" = 112, 111, 114 -> 22
+    si c0 es_igual 112 y c1 es_igual 111 y c2 es_igual 114 entonces
+        devuelvase 22
+    listo
+    devuelvase 10
+fin parcero
+
+; For 4-char keywords: sino, haga
+parcero match_kw4(c0: numero, c1: numero, c2: numero, c3: numero) devuelve numero
+    ; "sino" = 115, 105, 110, 111 -> 104
+    si c0 es_igual 115 y c1 es_igual 105 entonces
+        si c2 es_igual 110 y c3 es_igual 111 entonces
+            devuelvase 104
+        listo
+    listo
+    ; "haga" = 104, 97, 103, 97 -> 107
+    si c0 es_igual 104 y c1 es_igual 97 entonces
+        si c2 es_igual 103 y c3 es_igual 97 entonces
+            devuelvase 107
+        listo
+    listo
+    devuelvase 10
+fin parcero
+
+; For 5-char keywords: listo, menos, entre
+parcero match_kw5(c0: numero, c1: numero, c2: numero, c3: numero, c4: numero) devuelve numero
+    ; "listo" = 108, 105, 115, 116, 111 -> 105
+    si c0 es_igual 108 y c1 es_igual 105 entonces
+        si c2 es_igual 115 y c3 es_igual 116 entonces
+            si c4 es_igual 111 entonces
+                devuelvase 105
             listo
-        sino
-            in_word es 0
         listo
-        c es leer_byte()
     listo
+    ; "menos" = 109, 101, 110, 111, 115 -> 21
+    si c0 es_igual 109 y c1 es_igual 101 entonces
+        si c2 es_igual 110 y c3 es_igual 111 entonces
+            si c4 es_igual 115 entonces
+                devuelvase 21
+            listo
+        listo
+    listo
+    ; "entre" = 101, 110, 116, 114, 101 -> 23
+    si c0 es_igual 101 y c1 es_igual 110 entonces
+        si c2 es_igual 116 y c3 es_igual 114 entonces
+            si c4 es_igual 101 entonces
+                devuelvase 23
+            listo
+        listo
+    listo
+    devuelvase 10
+fin parcero
+
+; For 6-char keywords: numero
+parcero match_kw6(c0: numero, c1: numero, c2: numero, c3: numero, c4: numero, c5: numero) devuelve numero
+    ; "numero" = 110, 117, 109, 101, 114, 111 -> 118
+    si c0 es_igual 110 y c1 es_igual 117 entonces
+        si c2 es_igual 109 y c3 es_igual 101 entonces
+            si c4 es_igual 114 y c5 es_igual 111 entonces
+                devuelvase 118
+            listo
+        listo
+    listo
+    devuelvase 10
+fin parcero
+
+; For 7-char keywords: parcero, arreglo
+; Returns token type (100 or 119) if match, or 0 if no match
+; Note: checks all 7 chars using two calls (Stage 0 has 6-param limit)
+parcero match_kw7_first(c0: numero, c1: numero, c2: numero, c3: numero, c4: numero, c5: numero) devuelve numero
+    ; "parcer" prefix -> return 100 (need to check 'o' = 111)
+    si c0 es_igual 112 y c1 es_igual 97 entonces
+        si c2 es_igual 114 y c3 es_igual 99 entonces
+            si c4 es_igual 101 y c5 es_igual 114 entonces
+                devuelvase 100
+            listo
+        listo
+    listo
+    ; "arregl" prefix -> return 119 (need to check 'o' = 111)
+    si c0 es_igual 97 y c1 es_igual 114 entonces
+        si c2 es_igual 114 y c3 es_igual 101 entonces
+            si c4 es_igual 103 y c5 es_igual 108 entonces
+                devuelvase 119
+            listo
+        listo
+    listo
+    devuelvase 0
+fin parcero
+
+; For 8-char keywords: devuelve, entonces, mientras, es_igual, es_menor, es_mayor
+; Returns candidate token if first 6 chars match, 0 otherwise
+; Caller must check last 2 chars
+parcero match_kw8_first(c0: numero, c1: numero, c2: numero, c3: numero, c4: numero, c5: numero) devuelve numero
+    ; "devuel" prefix -> return 120 (need "ve" = 118, 101)
+    si c0 es_igual 100 y c1 es_igual 101 entonces
+        si c2 es_igual 118 y c3 es_igual 117 entonces
+            si c4 es_igual 101 y c5 es_igual 108 entonces
+                devuelvase 120
+            listo
+        listo
+    listo
+    ; "entonc" prefix -> return 103 (need "es" = 101, 115)
+    si c0 es_igual 101 y c1 es_igual 110 entonces
+        si c2 es_igual 116 y c3 es_igual 111 entonces
+            si c4 es_igual 110 y c5 es_igual 99 entonces
+                devuelvase 103
+            listo
+        listo
+    listo
+    ; "mientr" prefix -> return 106 (need "as" = 97, 115)
+    si c0 es_igual 109 y c1 es_igual 105 entonces
+        si c2 es_igual 101 y c3 es_igual 110 entonces
+            si c4 es_igual 116 y c5 es_igual 114 entonces
+                devuelvase 106
+            listo
+        listo
+    listo
+    ; "es_igu" prefix -> return 30 (need "al" = 97, 108) for es_igual
+    ; "es_men" prefix -> return 33 (need "or" = 111, 114) for es_menor
+    ; "es_may" prefix -> return 32 (need "or" = 111, 114) for es_mayor
+    si c0 es_igual 101 y c1 es_igual 115 entonces
+        si c2 es_igual 95 entonces
+            si c3 es_igual 105 y c4 es_igual 103 entonces
+                si c5 es_igual 117 entonces
+                    devuelvase 30
+                listo
+            listo
+            si c3 es_igual 109 y c4 es_igual 101 entonces
+                si c5 es_igual 110 entonces
+                    devuelvase 33
+                listo
+            listo
+            si c3 es_igual 109 y c4 es_igual 97 entonces
+                si c5 es_igual 121 entonces
+                    devuelvase 32
+                listo
+            listo
+        listo
+    listo
+    devuelvase 0
+fin parcero
+
+; Check last 2 chars for 8-char keywords
+parcero match_kw8_last(candidate: numero, c6: numero, c7: numero) devuelve numero
+    ; devuelve needs "ve" = 118, 101
+    si candidate es_igual 120 entonces
+        si c6 es_igual 118 y c7 es_igual 101 entonces
+            devuelvase 120
+        listo
+    listo
+    ; entonces needs "es" = 101, 115
+    si candidate es_igual 103 entonces
+        si c6 es_igual 101 y c7 es_igual 115 entonces
+            devuelvase 103
+        listo
+    listo
+    ; mientras needs "as" = 97, 115
+    si candidate es_igual 106 entonces
+        si c6 es_igual 97 y c7 es_igual 115 entonces
+            devuelvase 106
+        listo
+    listo
+    ; es_igual needs "al" = 97, 108
+    si candidate es_igual 30 entonces
+        si c6 es_igual 97 y c7 es_igual 108 entonces
+            devuelvase 30
+        listo
+    listo
+    ; es_menor needs "or" = 111, 114
+    si candidate es_igual 33 entonces
+        si c6 es_igual 111 y c7 es_igual 114 entonces
+            devuelvase 33
+        listo
+    listo
+    ; es_mayor needs "or" = 111, 114
+    si candidate es_igual 32 entonces
+        si c6 es_igual 111 y c7 es_igual 114 entonces
+            devuelvase 32
+        listo
+    listo
+    devuelvase 0
+fin parcero
+
+; For 10-char keywords: devuelvase
+; Check first 6 chars (devuel = 100,101,118,117,101,108)
+parcero match_kw10_first(c0: numero, c1: numero, c2: numero, c3: numero, c4: numero, c5: numero) devuelve numero
+    si c0 es_igual 100 y c1 es_igual 101 entonces
+        si c2 es_igual 118 y c3 es_igual 117 entonces
+            si c4 es_igual 101 y c5 es_igual 108 entonces
+                devuelvase 111
+            listo
+        listo
+    listo
+    devuelvase 0
+fin parcero
+
+; Check last 4 chars for devuelvase (vase = 118,97,115,101)
+parcero match_kw10_last(c6: numero, c7: numero, c8: numero, c9: numero) devuelve numero
+    si c6 es_igual 118 y c7 es_igual 97 entonces
+        si c8 es_igual 115 y c9 es_igual 101 entonces
+            devuelvase 111
+        listo
+    listo
+    devuelvase 0
+fin parcero
+
+; For 11-char keywords: mayor_igual (34), menor_igual (35)
+; mayor_igual = m-a-y-o-r-_-i-g-u-a-l = 109,97,121,111,114,95,105,103,117,97,108
+; menor_igual = m-e-n-o-r-_-i-g-u-a-l = 109,101,110,111,114,95,105,103,117,97,108
+parcero match_kw11_first(c0: numero, c1: numero, c2: numero, c3: numero, c4: numero, c5: numero) devuelve numero
+    ; "mayor_" = 109,97,121,111,114,95 -> return 34
+    si c0 es_igual 109 y c1 es_igual 97 entonces
+        si c2 es_igual 121 y c3 es_igual 111 entonces
+            si c4 es_igual 114 y c5 es_igual 95 entonces
+                devuelvase 34
+            listo
+        listo
+    listo
+    ; "menor_" = 109,101,110,111,114,95 -> return 35
+    si c0 es_igual 109 y c1 es_igual 101 entonces
+        si c2 es_igual 110 y c3 es_igual 111 entonces
+            si c4 es_igual 114 y c5 es_igual 95 entonces
+                devuelvase 35
+            listo
+        listo
+    listo
+    devuelvase 0
+fin parcero
+
+; Check last 5 chars for 11-char keywords (igual = 105,103,117,97,108)
+parcero match_kw11_last(c6: numero, c7: numero, c8: numero, c9: numero, c10: numero) devuelve numero
+    si c6 es_igual 105 y c7 es_igual 103 entonces
+        si c8 es_igual 117 y c9 es_igual 97 entonces
+            si c10 es_igual 108 entonces
+                devuelvase 1
+            listo
+        listo
+    listo
+    devuelvase 0
+fin parcero
+
+; -----------------------------------------------------------------------------
+; Main lexer: reads tokens and outputs their types
+; Returns number of tokens found
+; -----------------------------------------------------------------------------
+
+parcero lex_all() devuelve numero
+    arreglo[16] de numero buf
+    numero c
+    numero len
+    numero tok
+    numero count
+    numero num_val
+    numero dummy
+
+    count es 0
+
+    ; Read first character
+    c es leer_byte()
+
+    mientras c es_mayor 0 haga
+        ; Skip whitespace
+        mientras lex_is_whitespace(c) es_igual 1 y c es_mayor 0 haga
+            c es leer_byte()
+        listo
+
+        ; Check for EOF after whitespace
+        si c menor_igual 0 entonces
+            devuelvase count
+        listo
+
+        ; Skip comments (lines starting with ;)
+        si c es_igual 59 entonces
+            mientras c es_mayor 0 y (no (c es_igual 10)) haga
+                c es leer_byte()
+            listo
+            c es leer_byte()
+        sino
+            ; Check for identifiers/keywords
+            si lex_is_alpha(c) es_igual 1 entonces
+                len es 0
+                mientras lex_is_alnum(c) es_igual 1 y len es_menor 15 haga
+                    buf[len] es c
+                    len es len mas 1
+                    c es leer_byte()
+                listo
+
+                ; Match keyword based on length - use flat structure
+                tok es 10
+                si len es_igual 2 entonces
+                    tok es match_kw2(buf[0], buf[1])
+                listo
+                si len es_igual 3 entonces
+                    tok es match_kw3(buf[0], buf[1], buf[2])
+                listo
+                si len es_igual 4 entonces
+                    tok es match_kw4(buf[0], buf[1], buf[2], buf[3])
+                listo
+                si len es_igual 5 entonces
+                    tok es match_kw5(buf[0], buf[1], buf[2], buf[3], buf[4])
+                listo
+                si len es_igual 6 entonces
+                    tok es match_kw6(buf[0], buf[1], buf[2], buf[3], buf[4], buf[5])
+                listo
+                si len es_igual 7 entonces
+                    ; Check first 6 chars
+                    tok es match_kw7_first(buf[0], buf[1], buf[2], buf[3], buf[4], buf[5])
+                    ; Then verify 7th char is 'o' (111) for parcero/arreglo
+                    si tok es_mayor 0 entonces
+                        si buf[6] es_igual 111 entonces
+                            tok es tok
+                        sino
+                            tok es 10
+                        listo
+                    listo
+                listo
+                si len es_igual 8 entonces
+                    ; Check first 6 chars
+                    tok es match_kw8_first(buf[0], buf[1], buf[2], buf[3], buf[4], buf[5])
+                    ; Then check last 2 chars
+                    si tok es_mayor 0 entonces
+                        tok es match_kw8_last(tok, buf[6], buf[7])
+                        si tok es_igual 0 entonces
+                            tok es 10
+                        listo
+                    listo
+                listo
+                si len es_igual 10 entonces
+                    ; Check first 6 chars for devuelvase
+                    tok es match_kw10_first(buf[0], buf[1], buf[2], buf[3], buf[4], buf[5])
+                    ; Then check last 4 chars
+                    si tok es_mayor 0 entonces
+                        tok es match_kw10_last(buf[6], buf[7], buf[8], buf[9])
+                        si tok es_igual 0 entonces
+                            tok es 10
+                        listo
+                    listo
+                listo
+                si len es_igual 11 entonces
+                    ; Check first 6 chars for mayor_igual/menor_igual
+                    tok es match_kw11_first(buf[0], buf[1], buf[2], buf[3], buf[4], buf[5])
+                    ; Then check last 5 chars (igual)
+                    si tok es_mayor 0 entonces
+                        si match_kw11_last(buf[6], buf[7], buf[8], buf[9], buf[10]) es_igual 1 entonces
+                            tok es tok
+                        sino
+                            tok es 10
+                        listo
+                    listo
+                listo
+
+                dummy es write_number(tok)
+                count es count mas 1
+
+            sino
+                ; Check for number literals
+                si lex_is_digit(c) es_igual 1 entonces
+                    num_val es 0
+                    mientras lex_is_digit(c) es_igual 1 haga
+                        num_val es num_val por 10 mas (c menos 48)
+                        c es leer_byte()
+                    listo
+                    dummy es write_number(1)
+                    count es count mas 1
+
+                sino
+                    ; Check for single-character tokens
+                    si c es_igual 40 entonces
+                        dummy es write_number(50)
+                        count es count mas 1
+                        c es leer_byte()
+                    sino
+                        si c es_igual 41 entonces
+                            dummy es write_number(51)
+                            count es count mas 1
+                            c es leer_byte()
+                        sino
+                            si c es_igual 91 entonces
+                                dummy es write_number(52)
+                                count es count mas 1
+                                c es leer_byte()
+                            sino
+                                si c es_igual 93 entonces
+                                    dummy es write_number(53)
+                                    count es count mas 1
+                                    c es leer_byte()
+                                sino
+                                    si c es_igual 58 entonces
+                                        dummy es write_number(54)
+                                        count es count mas 1
+                                        c es leer_byte()
+                                    sino
+                                        si c es_igual 44 entonces
+                                            dummy es write_number(55)
+                                            count es count mas 1
+                                            c es leer_byte()
+                                        sino
+                                            ; Unknown character - skip it
+                                            c es leer_byte()
+                                        listo
+                                    listo
+                                listo
+                            listo
+                        listo
+                    listo
+                listo
+            listo
+        listo
+    listo
+
+    ; Output EOF token
+    dummy es write_number(0)
+    count es count mas 1
 
     devuelvase count
 fin parcero
 
-; Test the character classification
+; Main: run the lexer
 parcero principal() devuelve numero
-    ; Return result of count_words
-    devuelvase count_words()
+    devuelvase lex_all()
 fin parcero
