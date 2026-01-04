@@ -238,10 +238,85 @@ parcero emit_div_rax_rbx() devuelve numero
     devuelvase 0
 fin parcero
 
+; cmp rax, rbx
+parcero emit_cmp_rax_rbx() devuelve numero
+    numero d
+    d es emit(0x48)
+    d es emit(0x39)
+    d es emit(0xD8)
+    devuelvase 0
+fin parcero
+
+; sete al (set if equal)
+parcero emit_sete_al() devuelve numero
+    numero d
+    d es emit(0x0F)
+    d es emit(0x94)
+    d es emit(0xC0)
+    devuelvase 0
+fin parcero
+
+; setne al (set if not equal)
+parcero emit_setne_al() devuelve numero
+    numero d
+    d es emit(0x0F)
+    d es emit(0x95)
+    d es emit(0xC0)
+    devuelvase 0
+fin parcero
+
+; setl al (set if less, signed)
+parcero emit_setl_al() devuelve numero
+    numero d
+    d es emit(0x0F)
+    d es emit(0x9C)
+    d es emit(0xC0)
+    devuelvase 0
+fin parcero
+
+; setg al (set if greater, signed)
+parcero emit_setg_al() devuelve numero
+    numero d
+    d es emit(0x0F)
+    d es emit(0x9F)
+    d es emit(0xC0)
+    devuelvase 0
+fin parcero
+
+; setle al (set if less or equal, signed)
+parcero emit_setle_al() devuelve numero
+    numero d
+    d es emit(0x0F)
+    d es emit(0x9E)
+    d es emit(0xC0)
+    devuelvase 0
+fin parcero
+
+; setge al (set if greater or equal, signed)
+parcero emit_setge_al() devuelve numero
+    numero d
+    d es emit(0x0F)
+    d es emit(0x9D)
+    d es emit(0xC0)
+    devuelvase 0
+fin parcero
+
+; movzx rax, al (zero extend al to rax)
+parcero emit_movzx_rax_al() devuelve numero
+    numero d
+    d es emit(0x48)
+    d es emit(0x0F)
+    d es emit(0xB6)
+    d es emit(0xC0)
+    devuelvase 0
+fin parcero
+
 parcero principal() devuelve numero
     arreglo[16] de numero buf
     arreglo[8] de numero vname
     arreglo[8] de numero voff
+    arreglo[4096] de numero code_buf
+    numero code_pos
     numero c
     numero d
     numero len
@@ -250,8 +325,11 @@ parcero principal() devuelve numero
     numero val
     numero off
     numero i
+    numero emit_mode
 
     vcnt es 0
+    code_pos es 0
+    emit_mode es 0
     d es emit_elf_and_prologue()
     c es leer_byte()
 
@@ -485,6 +563,36 @@ parcero principal() devuelve numero
                                         op es 4
                                     listo
                                 listo
+                                ; es_igual = 101,115,95,105,103,117,97,108 (8 chars)
+                                si len es_igual 8 y buf[0] es_igual 101 y buf[1] es_igual 115 entonces
+                                    si buf[2] es_igual 95 y buf[3] es_igual 105 entonces
+                                        si buf[4] es_igual 103 y buf[5] es_igual 117 entonces
+                                            si buf[6] es_igual 97 y buf[7] es_igual 108 entonces
+                                                op es 5
+                                            listo
+                                        listo
+                                    listo
+                                listo
+                                ; es_menor = 101,115,95,109,101,110,111,114 (8 chars)
+                                si len es_igual 8 y buf[0] es_igual 101 y buf[1] es_igual 115 entonces
+                                    si buf[2] es_igual 95 y buf[3] es_igual 109 entonces
+                                        si buf[4] es_igual 101 y buf[5] es_igual 110 entonces
+                                            si buf[6] es_igual 111 y buf[7] es_igual 114 entonces
+                                                op es 6
+                                            listo
+                                        listo
+                                    listo
+                                listo
+                                ; es_mayor = 101,115,95,109,97,121,111,114 (8 chars)
+                                si len es_igual 8 y buf[0] es_igual 101 y buf[1] es_igual 115 entonces
+                                    si buf[2] es_igual 95 y buf[3] es_igual 109 entonces
+                                        si buf[4] es_igual 97 y buf[5] es_igual 121 entonces
+                                            si buf[6] es_igual 111 y buf[7] es_igual 114 entonces
+                                                op es 7
+                                            listo
+                                        listo
+                                    listo
+                                listo
                                 si op es_mayor 0 entonces
                                     d es emit_push_rax()
                                     mientras is_ws(c) es_igual 1 haga
@@ -541,6 +649,22 @@ parcero principal() devuelve numero
                                     listo
                                     si op es_igual 4 entonces
                                         d es emit_div_rax_rbx()
+                                    listo
+                                    ; Comparisons: cmp, setX, movzx
+                                    si op es_igual 5 entonces
+                                        d es emit_cmp_rax_rbx()
+                                        d es emit_sete_al()
+                                        d es emit_movzx_rax_al()
+                                    listo
+                                    si op es_igual 6 entonces
+                                        d es emit_cmp_rax_rbx()
+                                        d es emit_setl_al()
+                                        d es emit_movzx_rax_al()
+                                    listo
+                                    si op es_igual 7 entonces
+                                        d es emit_cmp_rax_rbx()
+                                        d es emit_setg_al()
+                                        d es emit_movzx_rax_al()
                                     listo
                                 listo
                             listo
