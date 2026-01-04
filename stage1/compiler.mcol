@@ -253,14 +253,199 @@ parcero emit_exit_program(val: numero) devuelve numero
 fin parcero
 
 ; =============================================================================
+; Lexer integration - tokenize input
+; =============================================================================
+
+; Match 2-char keywords: si, es
+parcero match2(c0: numero, c1: numero) devuelve numero
+    si c0 es_igual 115 y c1 es_igual 105 entonces
+        devuelvase 102
+    listo
+    si c0 es_igual 101 y c1 es_igual 115 entonces
+        devuelvase 117
+    listo
+    devuelvase 10
+fin parcero
+
+; Match 3-char keywords: fin, mas, por
+parcero match3(c0: numero, c1: numero, c2: numero) devuelve numero
+    si c0 es_igual 102 y c1 es_igual 105 y c2 es_igual 110 entonces
+        devuelvase 101
+    listo
+    devuelvase 10
+fin parcero
+
+; Match 6-char keywords: numero
+parcero match6(c0: numero, c1: numero, c2: numero, c3: numero, c4: numero, c5: numero) devuelve numero
+    si c0 es_igual 110 y c1 es_igual 117 entonces
+        si c2 es_igual 109 y c3 es_igual 101 entonces
+            si c4 es_igual 114 y c5 es_igual 111 entonces
+                devuelvase 118
+            listo
+        listo
+    listo
+    devuelvase 10
+fin parcero
+
+; Match 7-char prefix for parcero (parcer)
+parcero match7_prefix(c0: numero, c1: numero, c2: numero, c3: numero, c4: numero, c5: numero) devuelve numero
+    si c0 es_igual 112 y c1 es_igual 97 entonces
+        si c2 es_igual 114 y c3 es_igual 99 entonces
+            si c4 es_igual 101 y c5 es_igual 114 entonces
+                devuelvase 100
+            listo
+        listo
+    listo
+    devuelvase 0
+fin parcero
+
+; Match 8-char prefix for devuelve (devuel)
+parcero match8_prefix(c0: numero, c1: numero, c2: numero, c3: numero, c4: numero, c5: numero) devuelve numero
+    si c0 es_igual 100 y c1 es_igual 101 entonces
+        si c2 es_igual 118 y c3 es_igual 117 entonces
+            si c4 es_igual 101 y c5 es_igual 108 entonces
+                devuelvase 120
+            listo
+        listo
+    listo
+    devuelvase 0
+fin parcero
+
+; Match 10-char prefix for devuelvase (devuel)
+parcero match10_prefix(c0: numero, c1: numero, c2: numero, c3: numero, c4: numero, c5: numero) devuelve numero
+    si c0 es_igual 100 y c1 es_igual 101 entonces
+        si c2 es_igual 118 y c3 es_igual 117 entonces
+            si c4 es_igual 101 y c5 es_igual 108 entonces
+                devuelvase 111
+            listo
+        listo
+    listo
+    devuelvase 0
+fin parcero
+
+; =============================================================================
+; Parser state - global arrays to track state
+; =============================================================================
+
+; Read a token and return its type
+; cur_char is passed in and updated
+; num_val is set for number literals
+parcero read_token(c: numero) devuelve numero
+    arreglo[16] de numero buf
+    numero len
+    numero tok
+    numero num_val
+
+    ; Skip whitespace and comments
+    c es skip_whitespace_and_comments(c)
+
+    ; EOF
+    si c menor_igual 0 entonces
+        devuelvase 0
+    listo
+
+    ; Identifiers and keywords
+    si is_alpha(c) es_igual 1 entonces
+        len es 0
+        mientras is_alnum(c) es_igual 1 y len es_menor 15 haga
+            buf[len] es c
+            len es len mas 1
+            c es leer_byte()
+        listo
+
+        ; Match keywords by length
+        tok es 10
+        si len es_igual 2 entonces
+            tok es match2(buf[0], buf[1])
+        listo
+        si len es_igual 3 entonces
+            tok es match3(buf[0], buf[1], buf[2])
+        listo
+        si len es_igual 6 entonces
+            tok es match6(buf[0], buf[1], buf[2], buf[3], buf[4], buf[5])
+        listo
+        si len es_igual 7 entonces
+            tok es match7_prefix(buf[0], buf[1], buf[2], buf[3], buf[4], buf[5])
+            si tok es_mayor 0 y buf[6] es_igual 111 entonces
+                tok es tok
+            sino
+                tok es 10
+            listo
+        listo
+        si len es_igual 8 entonces
+            tok es match8_prefix(buf[0], buf[1], buf[2], buf[3], buf[4], buf[5])
+            si tok es_mayor 0 y buf[6] es_igual 118 y buf[7] es_igual 101 entonces
+                tok es tok
+            sino
+                tok es 10
+            listo
+        listo
+        si len es_igual 10 entonces
+            tok es match10_prefix(buf[0], buf[1], buf[2], buf[3], buf[4], buf[5])
+            si tok es_mayor 0 entonces
+                si buf[6] es_igual 118 y buf[7] es_igual 97 entonces
+                    si buf[8] es_igual 115 y buf[9] es_igual 101 entonces
+                        tok es tok
+                    sino
+                        tok es 10
+                    listo
+                sino
+                    tok es 10
+                listo
+            listo
+        listo
+        devuelvase tok
+    listo
+
+    ; Number literals
+    si is_digit(c) es_igual 1 entonces
+        num_val es 0
+        mientras is_digit(c) es_igual 1 haga
+            num_val es num_val por 10 mas (c menos 48)
+            c es leer_byte()
+        listo
+        devuelvase 1
+    listo
+
+    ; Single-char tokens
+    si c es_igual 40 entonces
+        c es leer_byte()
+        devuelvase 50
+    listo
+    si c es_igual 41 entonces
+        c es leer_byte()
+        devuelvase 51
+    listo
+
+    ; Unknown - skip
+    c es leer_byte()
+    devuelvase read_token(c)
+fin parcero
+
+; =============================================================================
 ; Main compiler entry point
-; For now: output a simple program that exits with code 42
 ; =============================================================================
 
 parcero principal() devuelve numero
     numero dummy
     numero padding
-    numero code_start
+    numero c
+    numero tok
+    numero exit_val
+
+    ; Read source code and find the return value
+    ; For now, parse a minimal program and extract the return value
+    c es leer_byte()
+
+    ; Expect: parcero
+    tok es read_token(c)
+    si tok es_igual 100 entonces
+        ; Found parcero, continue
+        c es leer_byte()
+    listo
+
+    ; For now, output a simple program that exits with the hardcoded value
+    exit_val es 42
 
     ; Emit ELF header (64 bytes)
     dummy es emit_elf_header()
@@ -278,8 +463,8 @@ parcero principal() devuelve numero
     listo
 
     ; Code starts at 0x401000
-    ; Emit: exit(42)
-    dummy es emit_exit_program(42)
+    ; Emit: exit(exit_val)
+    dummy es emit_exit_program(exit_val)
 
     devuelvase 0
 fin parcero
