@@ -236,8 +236,11 @@ symbols_leave_scope:
     test    rax, rax
     jz      .next_bucket
     cmp     byte [rax + SYM_SCOPE], r13b
-    je      .check_again
-    jmp     .check_chain
+    jne     .check_chain
+    ; New head is also in current scope - remove it too
+    mov     rax, [rax + SYM_NEXT]
+    mov     [rbx], rax
+    jmp     .check_again
 
 .next_bucket:
     pop     rcx

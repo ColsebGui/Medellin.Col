@@ -60,6 +60,8 @@ extern code_buffer
 extern code_size
 extern data_buffer
 extern data_size
+extern data_relocs
+extern data_relocs_count
 extern util_strlen
 extern util_memcpy
 
@@ -173,6 +175,43 @@ elf_write:
     mov     rdi, [text_offset]
     call    pad_to_offset
 
+    ; Fix up data relocations in code_buffer before copying
+    ; For each relocation: patch the 32-bit offset at code_buffer + code_offset
+    ; The offset is: (data_vaddr + data_offset) - (text_vaddr + code_offset + 4)
+    mov     rcx, [data_relocs_count]
+    test    rcx, rcx
+    jz      .no_relocs
+
+    lea     r13, [data_relocs]
+    mov     r14, [text_vaddr]
+    mov     r15, [data_vaddr]
+
+.reloc_loop:
+    ; Get code_offset and data_offset
+    mov     rax, [r13]              ; code_offset
+    mov     rbx, [r13 + 8]          ; data_offset
+
+    ; Calculate RIP-relative offset
+    ; target = data_vaddr + data_offset
+    ; rip_after = text_vaddr + code_offset + 4
+    ; offset = target - rip_after
+    mov     rdi, r15
+    add     rdi, rbx                ; target = data_vaddr + data_offset
+    mov     rsi, r14
+    add     rsi, rax
+    add     rsi, 4                  ; rip_after = text_vaddr + code_offset + 4
+    sub     rdi, rsi                ; offset = target - rip_after
+
+    ; Patch the offset in code_buffer
+    lea     rdx, [code_buffer]
+    add     rdx, rax                ; rdx = code_buffer + code_offset
+    mov     [rdx], edi              ; Write 32-bit offset
+
+    add     r13, 16                 ; Next relocation entry
+    dec     rcx
+    jnz     .reloc_loop
+
+.no_relocs:
     ; Write .text section (code)
     lea     rsi, [code_buffer]
     mov     rdi, [elf_ptr]

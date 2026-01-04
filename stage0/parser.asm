@@ -386,7 +386,7 @@ parse_parcero:
     push    r13
     push    r14
     push    r15
-    sub     rsp, 8                      ; Align stack
+    sub     rsp, 136                    ; Local space for up to 16 params (128) + alignment (8)
 
     ; Consume 'parcero'
     call    lexer_next
@@ -417,8 +417,8 @@ parse_parcero:
     test    rax, rax
     jz      .error_expect_paren
 
-    ; Parse parameters
-    lea     r13, [temp_list]
+    ; Parse parameters - use stack-local array
+    lea     r13, [rbp - 40 - 136]       ; Point to local array (rsp after sub)
     xor     r14, r14                    ; Param count
 
     ; Check for ')'
@@ -478,9 +478,9 @@ parse_parcero:
     call    arena_alloc
     mov     [r12 + AST_PARCERO_PARAMS], rax
 
-    ; Copy params
+    ; Copy params from local array (r13)
     mov     rdi, rax
-    lea     rsi, [temp_list]
+    mov     rsi, r13                    ; Use local array, not temp_list
     mov     rcx, r14
 .copy_params:
     test    rcx, rcx
@@ -566,7 +566,7 @@ parse_parcero:
     xor     rax, rax
 
 .return:
-    add     rsp, 8
+    add     rsp, 136                    ; Deallocate local param array
     pop     r15
     pop     r14
     pop     r13
@@ -587,6 +587,7 @@ parse_bloque:
     push    r12
     push    r13
     push    r14
+    sub     rsp, 512                    ; Local space for up to 64 statements
 
     ; Allocate block node
     mov     rdi, AST_BLOQUE_SIZE
@@ -598,8 +599,8 @@ parse_bloque:
     mov     qword [r12 + 8], 0
     mov     qword [r12 + AST_BLOQUE_COUNT], 0
 
-    ; Parse statements
-    lea     r13, [temp_list]
+    ; Parse statements - use stack-local array instead of global temp_list
+    lea     r13, [rbp - 32 - 512]       ; Point to local array
     xor     r14, r14
 
 .stmt_loop:
@@ -642,9 +643,9 @@ parse_bloque:
     call    arena_alloc
     mov     [r12 + AST_BLOQUE_STMTS], rax
 
-    ; Copy statements
+    ; Copy statements from local array (r13)
     mov     rdi, rax
-    lea     rsi, [temp_list]
+    mov     rsi, r13                    ; Use local array, not temp_list
     mov     rcx, r14
 .copy_stmts:
     test    rcx, rcx
@@ -664,6 +665,7 @@ parse_bloque:
     xor     rax, rax
 
 .return:
+    add     rsp, 512                    ; Deallocate local array
     pop     r14
     pop     r13
     pop     r12
@@ -1215,6 +1217,7 @@ parse_call_args:
     push    r12
     push    r13
     push    r14
+    sub     rsp, 128                    ; Local space for up to 16 args
 
     ; Consume '('
     call    lexer_next
@@ -1226,8 +1229,8 @@ parse_call_args:
     mov     byte [r12], AST_LLAMADA
     mov     qword [r12 + AST_LLAMADA_COUNT], 0
 
-    ; Parse arguments
-    lea     r13, [temp_list]
+    ; Parse arguments - use stack-local array
+    lea     r13, [rbp - 32 - 128]       ; Point to local array
     xor     r14, r14
 
     ; Check for ')'
@@ -1265,9 +1268,9 @@ parse_call_args:
     call    arena_alloc
     mov     [r12 + AST_LLAMADA_ARGS], rax
 
-    ; Copy args
+    ; Copy args from local array (r13)
     mov     rdi, rax
-    lea     rsi, [temp_list]
+    mov     rsi, r13                    ; Use local array, not temp_list
     mov     rcx, r14
 .copy_args:
     test    rcx, rcx
@@ -1281,6 +1284,7 @@ parse_call_args:
 
 .no_args:
     mov     rax, r12
+    add     rsp, 128                    ; Deallocate local array
     pop     r14
     pop     r13
     pop     r12

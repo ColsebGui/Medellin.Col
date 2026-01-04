@@ -140,6 +140,11 @@ section .data
         dq kw_y,            1,  TOKEN_Y
         dq kw_o,            1,  TOKEN_O
         dq kw_no,           2,  TOKEN_NO
+        dq kw_es_igual,     8,  TOKEN_IGUAL
+        dq kw_es_mayor,     8,  TOKEN_MAYOR
+        dq kw_es_menor,     8,  TOKEN_MENOR
+        dq kw_mayor_igual,  11, TOKEN_MAYOR_IGUAL
+        dq kw_menor_igual,  11, TOKEN_MENOR_IGUAL
         dq 0, 0, 0          ; End marker
 
     ; Keyword strings
@@ -175,6 +180,11 @@ section .data
     kw_y:           db "y", 0
     kw_o:           db "o", 0
     kw_no:          db "no", 0
+    kw_es_igual:    db "es_igual", 0
+    kw_es_mayor:    db "es_mayor", 0
+    kw_es_menor:    db "es_menor", 0
+    kw_mayor_igual: db "mayor_igual", 0
+    kw_menor_igual: db "menor_igual", 0
 
     ; Error messages
     err_unexpected_char:    db "Caracter inesperado", 0
