@@ -353,8 +353,12 @@ parcero principal() devuelve numero
     numero off
     numero i
     numero pos
+    numero loop_start
+    numero jz_patch
 
     vcnt es 0
+    loop_start es 0
+    jz_patch es 0
     pos es 0
     d es emit_elf_header()
     ; Prologue to buffer
@@ -476,6 +480,300 @@ parcero principal() devuelve numero
                                 vname[vcnt] es h
                                 vcnt es vcnt mas 1
                                 voff[vcnt menos 1] es 0 menos (vcnt por 8)
+                            listo
+                        listo
+                    listo
+                listo
+
+                ; mientras = 109,105,101,110,116,114,97,115 (8 chars)
+                si len es_igual 8 y c es_mayor 0 entonces
+                    si buf[0] es_igual 109 y buf[1] es_igual 105 entonces
+                        si buf[2] es_igual 101 y buf[3] es_igual 110 entonces
+                            si buf[4] es_igual 116 y buf[5] es_igual 114 entonces
+                                si buf[6] es_igual 97 y buf[7] es_igual 115 entonces
+                                    ; Save loop start position
+                                    loop_start es pos
+                                    mientras is_ws(c) es_igual 1 haga
+                                        c es leer_byte()
+                                    listo
+                                    ; Parse condition first operand
+                                    si is_digit(c) es_igual 1 entonces
+                                        val es 0
+                                        mientras is_digit(c) es_igual 1 haga
+                                            val es val por 10 mas (c menos 48)
+                                            c es leer_byte()
+                                        listo
+                                        ; mov rax, imm64
+                                        numero wt
+                                        code[pos] es 0x48
+                                        pos es pos mas 1
+                                        code[pos] es 0xB8
+                                        pos es pos mas 1
+                                        wt es val
+                                        code[pos] es wt menos ((wt entre 256) por 256)
+                                        pos es pos mas 1
+                                        wt es wt entre 256
+                                        code[pos] es wt menos ((wt entre 256) por 256)
+                                        pos es pos mas 1
+                                        wt es wt entre 256
+                                        code[pos] es wt menos ((wt entre 256) por 256)
+                                        pos es pos mas 1
+                                        wt es wt entre 256
+                                        code[pos] es wt
+                                        pos es pos mas 1
+                                        code[pos] es 0
+                                        pos es pos mas 1
+                                        code[pos] es 0
+                                        pos es pos mas 1
+                                        code[pos] es 0
+                                        pos es pos mas 1
+                                        code[pos] es 0
+                                        pos es pos mas 1
+                                    sino
+                                        si is_alpha(c) es_igual 1 entonces
+                                            numero wh
+                                            numero woff
+                                            numero wi
+                                            len es 0
+                                            mientras is_alnum(c) es_igual 1 y len es_menor 15 haga
+                                                buf[len] es c
+                                                len es len mas 1
+                                                c es leer_byte()
+                                            listo
+                                            wh es buf[0]
+                                            woff es 0
+                                            wi es 0
+                                            mientras wi es_menor vcnt haga
+                                                si vname[wi] es_igual wh entonces
+                                                    woff es voff[wi]
+                                                listo
+                                                wi es wi mas 1
+                                            listo
+                                            ; mov rax, [rbp+off]
+                                            code[pos] es 0x48
+                                            pos es pos mas 1
+                                            code[pos] es 0x8B
+                                            pos es pos mas 1
+                                            code[pos] es 0x45
+                                            pos es pos mas 1
+                                            code[pos] es woff mas 256
+                                            pos es pos mas 1
+                                        listo
+                                    listo
+                                    ; Skip whitespace
+                                    mientras is_ws(c) es_igual 1 haga
+                                        c es leer_byte()
+                                    listo
+                                    ; Parse comparison operator
+                                    si is_alpha(c) es_igual 1 entonces
+                                        numero wop
+                                        wop es 0
+                                        len es 0
+                                        mientras is_alnum(c) es_igual 1 y len es_menor 15 haga
+                                            buf[len] es c
+                                            len es len mas 1
+                                            c es leer_byte()
+                                        listo
+                                        ; es_igual (8)
+                                        si len es_igual 8 y buf[0] es_igual 101 y buf[1] es_igual 115 entonces
+                                            si buf[2] es_igual 95 y buf[3] es_igual 105 entonces
+                                                si buf[4] es_igual 103 y buf[5] es_igual 117 entonces
+                                                    si buf[6] es_igual 97 y buf[7] es_igual 108 entonces
+                                                        wop es 5
+                                                    listo
+                                                listo
+                                            listo
+                                        listo
+                                        ; es_menor (8)
+                                        si len es_igual 8 y buf[0] es_igual 101 y buf[1] es_igual 115 entonces
+                                            si buf[2] es_igual 95 y buf[3] es_igual 109 entonces
+                                                si buf[4] es_igual 101 y buf[5] es_igual 110 entonces
+                                                    si buf[6] es_igual 111 y buf[7] es_igual 114 entonces
+                                                        wop es 6
+                                                    listo
+                                                listo
+                                            listo
+                                        listo
+                                        ; es_mayor (8)
+                                        si len es_igual 8 y buf[0] es_igual 101 y buf[1] es_igual 115 entonces
+                                            si buf[2] es_igual 95 y buf[3] es_igual 109 entonces
+                                                si buf[4] es_igual 97 y buf[5] es_igual 121 entonces
+                                                    si buf[6] es_igual 111 y buf[7] es_igual 114 entonces
+                                                        wop es 7
+                                                    listo
+                                                listo
+                                            listo
+                                        listo
+                                        si wop es_mayor 0 entonces
+                                            ; push rax (first operand)
+                                            code[pos] es 0x50
+                                            pos es pos mas 1
+                                            mientras is_ws(c) es_igual 1 haga
+                                                c es leer_byte()
+                                            listo
+                                            ; Parse second operand
+                                            si is_digit(c) es_igual 1 entonces
+                                                val es 0
+                                                mientras is_digit(c) es_igual 1 haga
+                                                    val es val por 10 mas (c menos 48)
+                                                    c es leer_byte()
+                                                listo
+                                                ; mov rax, imm64
+                                                numero wt2
+                                                code[pos] es 0x48
+                                                pos es pos mas 1
+                                                code[pos] es 0xB8
+                                                pos es pos mas 1
+                                                wt2 es val
+                                                code[pos] es wt2 menos ((wt2 entre 256) por 256)
+                                                pos es pos mas 1
+                                                wt2 es wt2 entre 256
+                                                code[pos] es wt2 menos ((wt2 entre 256) por 256)
+                                                pos es pos mas 1
+                                                wt2 es wt2 entre 256
+                                                code[pos] es wt2 menos ((wt2 entre 256) por 256)
+                                                pos es pos mas 1
+                                                wt2 es wt2 entre 256
+                                                code[pos] es wt2
+                                                pos es pos mas 1
+                                                code[pos] es 0
+                                                pos es pos mas 1
+                                                code[pos] es 0
+                                                pos es pos mas 1
+                                                code[pos] es 0
+                                                pos es pos mas 1
+                                                code[pos] es 0
+                                                pos es pos mas 1
+                                            sino
+                                                si is_alpha(c) es_igual 1 entonces
+                                                    numero wh2
+                                                    numero woff2
+                                                    numero wi2
+                                                    len es 0
+                                                    mientras is_alnum(c) es_igual 1 y len es_menor 15 haga
+                                                        buf[len] es c
+                                                        len es len mas 1
+                                                        c es leer_byte()
+                                                    listo
+                                                    wh2 es buf[0]
+                                                    woff2 es 0
+                                                    wi2 es 0
+                                                    mientras wi2 es_menor vcnt haga
+                                                        si vname[wi2] es_igual wh2 entonces
+                                                            woff2 es voff[wi2]
+                                                        listo
+                                                        wi2 es wi2 mas 1
+                                                    listo
+                                                    ; mov rax, [rbp+off]
+                                                    code[pos] es 0x48
+                                                    pos es pos mas 1
+                                                    code[pos] es 0x8B
+                                                    pos es pos mas 1
+                                                    code[pos] es 0x45
+                                                    pos es pos mas 1
+                                                    code[pos] es woff2 mas 256
+                                                    pos es pos mas 1
+                                                listo
+                                            listo
+                                            ; pop rbx, xchg, compare
+                                            code[pos] es 0x5B
+                                            pos es pos mas 1
+                                            code[pos] es 0x48
+                                            pos es pos mas 1
+                                            code[pos] es 0x87
+                                            pos es pos mas 1
+                                            code[pos] es 0xD8
+                                            pos es pos mas 1
+                                            ; cmp rax, rbx
+                                            code[pos] es 0x48
+                                            pos es pos mas 1
+                                            code[pos] es 0x39
+                                            pos es pos mas 1
+                                            code[pos] es 0xD8
+                                            pos es pos mas 1
+                                            si wop es_igual 5 entonces
+                                                ; sete al
+                                                code[pos] es 0x0F
+                                                pos es pos mas 1
+                                                code[pos] es 0x94
+                                                pos es pos mas 1
+                                                code[pos] es 0xC0
+                                                pos es pos mas 1
+                                            listo
+                                            si wop es_igual 6 entonces
+                                                ; setl al
+                                                code[pos] es 0x0F
+                                                pos es pos mas 1
+                                                code[pos] es 0x9C
+                                                pos es pos mas 1
+                                                code[pos] es 0xC0
+                                                pos es pos mas 1
+                                            listo
+                                            si wop es_igual 7 entonces
+                                                ; setg al
+                                                code[pos] es 0x0F
+                                                pos es pos mas 1
+                                                code[pos] es 0x9F
+                                                pos es pos mas 1
+                                                code[pos] es 0xC0
+                                                pos es pos mas 1
+                                            listo
+                                            ; movzx rax, al
+                                            code[pos] es 0x48
+                                            pos es pos mas 1
+                                            code[pos] es 0x0F
+                                            pos es pos mas 1
+                                            code[pos] es 0xB6
+                                            pos es pos mas 1
+                                            code[pos] es 0xC0
+                                            pos es pos mas 1
+                                        listo
+                                    listo
+                                    ; Emit test rax, rax
+                                    code[pos] es 0x48
+                                    pos es pos mas 1
+                                    code[pos] es 0x85
+                                    pos es pos mas 1
+                                    code[pos] es 0xC0
+                                    pos es pos mas 1
+                                    ; Emit jz with placeholder
+                                    code[pos] es 0x74
+                                    pos es pos mas 1
+                                    jz_patch es pos
+                                    code[pos] es 0x00
+                                    pos es pos mas 1
+                                    ; Skip "haga" keyword
+                                    mientras is_ws(c) es_igual 1 haga
+                                        c es leer_byte()
+                                    listo
+                                    len es 0
+                                    mientras is_alnum(c) es_igual 1 y len es_menor 15 haga
+                                        buf[len] es c
+                                        len es len mas 1
+                                        c es leer_byte()
+                                    listo
+                                listo
+                            listo
+                        listo
+                    listo
+                listo
+
+                ; listo = 108,105,115,116,111 (5 chars)
+                si len es_igual 5 entonces
+                    si buf[0] es_igual 108 y buf[1] es_igual 105 entonces
+                        si buf[2] es_igual 115 y buf[3] es_igual 116 entonces
+                            si buf[4] es_igual 111 entonces
+                                ; Emit jmp back to loop_start
+                                numero back_off
+                                back_off es loop_start menos pos menos 2
+                                code[pos] es 0xEB
+                                pos es pos mas 1
+                                code[pos] es back_off mas 256
+                                pos es pos mas 1
+                                ; Backpatch the jz with forward offset
+                                numero fwd_off
+                                fwd_off es pos menos jz_patch menos 1
+                                code[jz_patch] es fwd_off
                             listo
                         listo
                     listo
