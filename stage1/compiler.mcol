@@ -184,6 +184,60 @@ parcero emit_mov_rbp_off_rax(off: numero) devuelve numero
     devuelvase 0
 fin parcero
 
+parcero emit_push_rax() devuelve numero
+    numero d
+    d es emit(0x50)
+    devuelvase 0
+fin parcero
+
+parcero emit_pop_rbx() devuelve numero
+    numero d
+    d es emit(0x5B)
+    devuelvase 0
+fin parcero
+
+; add rax, rbx (result in rax)
+parcero emit_add_rax_rbx() devuelve numero
+    numero d
+    d es emit(0x48)
+    d es emit(0x01)
+    d es emit(0xD8)
+    devuelvase 0
+fin parcero
+
+; sub rax, rbx (rax = rax - rbx)
+parcero emit_sub_rax_rbx() devuelve numero
+    numero d
+    d es emit(0x48)
+    d es emit(0x29)
+    d es emit(0xD8)
+    devuelvase 0
+fin parcero
+
+; imul rax, rbx (result in rax)
+parcero emit_mul_rax_rbx() devuelve numero
+    numero d
+    d es emit(0x48)
+    d es emit(0x0F)
+    d es emit(0xAF)
+    d es emit(0xC3)
+    devuelvase 0
+fin parcero
+
+; idiv rbx (rax = rdx:rax / rbx, rdx = remainder)
+; Need to sign-extend rax into rdx first with cqo
+parcero emit_div_rax_rbx() devuelve numero
+    numero d
+    ; cqo - sign extend rax to rdx:rax
+    d es emit(0x48)
+    d es emit(0x99)
+    ; idiv rbx
+    d es emit(0x48)
+    d es emit(0xF7)
+    d es emit(0xFB)
+    devuelvase 0
+fin parcero
+
 parcero principal() devuelve numero
     arreglo[16] de numero buf
     arreglo[8] de numero vname
@@ -366,6 +420,7 @@ parcero principal() devuelve numero
                                 listo
                                 i es i mas 1
                             listo
+                            ; Parse first operand (number or variable)
                             si is_digit(c) es_igual 1 entonces
                                 val es 0
                                 mientras is_digit(c) es_igual 1 haga
@@ -373,8 +428,123 @@ parcero principal() devuelve numero
                                     c es leer_byte()
                                 listo
                                 d es emit_mov_rax_imm(val)
-                                d es emit_mov_rbp_off_rax(off)
+                            sino
+                                si is_alpha(c) es_igual 1 entonces
+                                    numero vh
+                                    numero voff2
+                                    numero vi
+                                    len es 0
+                                    mientras is_alnum(c) es_igual 1 y len es_menor 15 haga
+                                        buf[len] es c
+                                        len es len mas 1
+                                        c es leer_byte()
+                                    listo
+                                    vh es buf[0]
+                                    voff2 es 0
+                                    vi es 0
+                                    mientras vi es_menor vcnt haga
+                                        si vname[vi] es_igual vh entonces
+                                            voff2 es voff[vi]
+                                        listo
+                                        vi es vi mas 1
+                                    listo
+                                    d es emit_mov_rax_rbp_off(voff2)
+                                listo
                             listo
+                            ; Check for operator - only skip spaces, not newlines
+                            mientras (c es_igual 32 o c es_igual 9) haga
+                                c es leer_byte()
+                            listo
+                            ; Only parse operator if starts with m (mas,menos), p (por), e (entre)
+                            si (c es_igual 109 o c es_igual 112 o c es_igual 101) entonces
+                                numero op
+                                op es 0
+                                len es 0
+                                mientras is_alnum(c) es_igual 1 y len es_menor 15 haga
+                                    buf[len] es c
+                                    len es len mas 1
+                                    c es leer_byte()
+                                listo
+                                ; mas = 109,97,115
+                                si len es_igual 3 y buf[0] es_igual 109 y buf[1] es_igual 97 y buf[2] es_igual 115 entonces
+                                    op es 1
+                                listo
+                                ; menos = 109,101,110,111,115
+                                si len es_igual 5 y buf[0] es_igual 109 y buf[1] es_igual 101 entonces
+                                    si buf[2] es_igual 110 y buf[3] es_igual 111 y buf[4] es_igual 115 entonces
+                                        op es 2
+                                    listo
+                                listo
+                                ; por = 112,111,114
+                                si len es_igual 3 y buf[0] es_igual 112 y buf[1] es_igual 111 y buf[2] es_igual 114 entonces
+                                    op es 3
+                                listo
+                                ; entre = 101,110,116,114,101
+                                si len es_igual 5 y buf[0] es_igual 101 y buf[1] es_igual 110 entonces
+                                    si buf[2] es_igual 116 y buf[3] es_igual 114 y buf[4] es_igual 101 entonces
+                                        op es 4
+                                    listo
+                                listo
+                                si op es_mayor 0 entonces
+                                    d es emit_push_rax()
+                                    mientras is_ws(c) es_igual 1 haga
+                                        c es leer_byte()
+                                    listo
+                                    ; Parse second operand
+                                    si is_digit(c) es_igual 1 entonces
+                                        val es 0
+                                        mientras is_digit(c) es_igual 1 haga
+                                            val es val por 10 mas (c menos 48)
+                                            c es leer_byte()
+                                        listo
+                                        d es emit_mov_rax_imm(val)
+                                    sino
+                                        si is_alpha(c) es_igual 1 entonces
+                                            numero vh2
+                                            numero voff3
+                                            numero vi2
+                                            len es 0
+                                            mientras is_alnum(c) es_igual 1 y len es_menor 15 haga
+                                                buf[len] es c
+                                                len es len mas 1
+                                                c es leer_byte()
+                                            listo
+                                            vh2 es buf[0]
+                                            voff3 es 0
+                                            vi2 es 0
+                                            mientras vi2 es_menor vcnt haga
+                                                si vname[vi2] es_igual vh2 entonces
+                                                    voff3 es voff[vi2]
+                                                listo
+                                                vi2 es vi2 mas 1
+                                            listo
+                                            d es emit_mov_rax_rbp_off(voff3)
+                                        listo
+                                    listo
+                                    ; Now rbx=left, rax=right, apply op
+                                    d es emit_pop_rbx()
+                                    ; Swap: we need left op right, but rbx=left, rax=right
+                                    ; For add/mul order doesn't matter
+                                    ; For sub/div we need rax=left, rbx=right
+                                    ; So swap them: xchg rax,rbx = 48 87 D8
+                                    d es emit(0x48)
+                                    d es emit(0x87)
+                                    d es emit(0xD8)
+                                    si op es_igual 1 entonces
+                                        d es emit_add_rax_rbx()
+                                    listo
+                                    si op es_igual 2 entonces
+                                        d es emit_sub_rax_rbx()
+                                    listo
+                                    si op es_igual 3 entonces
+                                        d es emit_mul_rax_rbx()
+                                    listo
+                                    si op es_igual 4 entonces
+                                        d es emit_div_rax_rbx()
+                                    listo
+                                listo
+                            listo
+                            d es emit_mov_rbp_off_rax(off)
                         sino
                             c es n2
                         listo
