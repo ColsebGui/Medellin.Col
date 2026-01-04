@@ -62,7 +62,7 @@ parcero emit_qword(v: numero) devuelve numero
     devuelvase 8
 fin parcero
 
-parcero emit_elf_and_prologue() devuelve numero
+parcero emit_elf_header() devuelve numero
     numero d
     numero i
     d es emit(0x7F)
@@ -112,18 +112,6 @@ parcero emit_elf_and_prologue() devuelve numero
         d es emit(0)
         i es i mas 1
     listo
-    ; Prologue
-    d es emit(0x55)
-    d es emit(0x48)
-    d es emit(0x89)
-    d es emit(0xE5)
-    d es emit(0x48)
-    d es emit(0x81)
-    d es emit(0xEC)
-    d es emit(0x00)
-    d es emit(0x01)
-    d es emit(0x00)
-    d es emit(0x00)
     devuelvase 0
 fin parcero
 
@@ -367,7 +355,19 @@ parcero principal() devuelve numero
 
     vcnt es 0
     pos es 0
-    d es emit_elf_and_prologue()
+    d es emit_elf_header()
+    ; Prologue
+    d es emit(0x55)
+    d es emit(0x48)
+    d es emit(0x89)
+    d es emit(0xE5)
+    d es emit(0x48)
+    d es emit(0x81)
+    d es emit(0xEC)
+    d es emit(0x00)
+    d es emit(0x01)
+    d es emit(0x00)
+    d es emit(0x00)
     c es leer_byte()
 
     ; Skip to body
