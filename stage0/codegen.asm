@@ -591,12 +591,11 @@ gen_si:
     mov     rdi, r13
     inc     rdi
     call    emit_jmp_forward
-    mov     r13, rax                    ; Save patch location for end
+    push    rax                         ; Save patch location for end jmp
 
-    ; Patch else jump
+    ; Patch else jump to here (rbx has the jz patch location)
+    mov     rdi, rbx
     call    emit_patch_jump
-    push    rbx
-    mov     rbx, rax
 
     ; Generate else block
     call    symbols_enter_scope
@@ -605,9 +604,8 @@ gen_si:
     call    symbols_leave_scope
 
     ; Patch end jump
-    mov     rdi, r13
+    pop     rdi                         ; Get the jmp patch location
     call    emit_patch_jump
-    pop     rbx
     jmp     .done
 
 .no_else:
