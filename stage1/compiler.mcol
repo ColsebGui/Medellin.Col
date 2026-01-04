@@ -344,10 +344,14 @@ parcero principal() devuelve numero
     arreglo[16] de numero buf
     arreglo[8] de numero vname
     arreglo[8] de numero voff
+    arreglo[8] de numero aname
+    arreglo[8] de numero aoff
     numero c
     numero d
     numero len
     numero vcnt
+    numero acnt
+    numero arr_off
     numero h
     numero val
     numero off
@@ -360,6 +364,8 @@ parcero principal() devuelve numero
     numero ctrl_type
 
     vcnt es 0
+    acnt es 0
+    arr_off es 0
     loop_start es 0
     jz_patch es 0
     si_jz_patch es 0
@@ -486,6 +492,59 @@ parcero principal() devuelve numero
                                 vname[vcnt] es h
                                 vcnt es vcnt mas 1
                                 voff[vcnt menos 1] es 0 menos (vcnt por 8)
+                            listo
+                        listo
+                    listo
+                listo
+
+                ; arreglo = 97,114,114,101,103,108,111 (7 chars)
+                si len es_igual 7 y c es_mayor 0 entonces
+                    si buf[0] es_igual 97 y buf[1] es_igual 114 entonces
+                        si buf[2] es_igual 114 y buf[3] es_igual 101 entonces
+                            si buf[4] es_igual 103 y buf[5] es_igual 108 entonces
+                                si buf[6] es_igual 111 entonces
+                                    mientras is_ws(c) es_igual 1 haga
+                                        c es leer_byte()
+                                    listo
+                                    si c es_igual 91 entonces
+                                        c es leer_byte()
+                                        numero arr_size
+                                        arr_size es 0
+                                        mientras is_digit(c) es_igual 1 haga
+                                            arr_size es arr_size por 10 mas (c menos 48)
+                                            c es leer_byte()
+                                        listo
+                                        si c es_igual 93 entonces
+                                            c es leer_byte()
+                                        listo
+                                        mientras is_ws(c) es_igual 1 haga
+                                            c es leer_byte()
+                                        listo
+                                        mientras is_alnum(c) es_igual 1 haga
+                                            c es leer_byte()
+                                        listo
+                                        mientras is_ws(c) es_igual 1 haga
+                                            c es leer_byte()
+                                        listo
+                                        mientras is_alnum(c) es_igual 1 haga
+                                            c es leer_byte()
+                                        listo
+                                        mientras is_ws(c) es_igual 1 haga
+                                            c es leer_byte()
+                                        listo
+                                        len es 0
+                                        mientras is_alnum(c) es_igual 1 y len es_menor 15 haga
+                                            buf[len] es c
+                                            len es len mas 1
+                                            c es leer_byte()
+                                        listo
+                                        h es buf[0]
+                                        aname[acnt] es h
+                                        arr_off es arr_off menos (arr_size por 8)
+                                        aoff[acnt] es arr_off
+                                        acnt es acnt mas 1
+                                    listo
+                                listo
                             listo
                         listo
                     listo
@@ -1139,23 +1198,52 @@ parcero principal() devuelve numero
                                                     c es leer_byte()
                                                 listo
                                                 h es buf[0]
-                                                off es 0
-                                                i es 0
-                                                mientras i es_menor vcnt haga
-                                                    si vname[i] es_igual h entonces
-                                                        off es voff[i]
+                                                si c es_igual 91 entonces
+                                                    ; Array read in devuelvase
+                                                    c es leer_byte()
+                                                    val es 0
+                                                    mientras is_digit(c) es_igual 1 haga
+                                                        val es val por 10 mas (c menos 48)
+                                                        c es leer_byte()
                                                     listo
-                                                    i es i mas 1
+                                                    si c es_igual 93 entonces
+                                                        c es leer_byte()
+                                                    listo
+                                                    off es 0
+                                                    i es 0
+                                                    mientras i es_menor acnt haga
+                                                        si aname[i] es_igual h entonces
+                                                            off es aoff[i]
+                                                        listo
+                                                        i es i mas 1
+                                                    listo
+                                                    off es off mas (val por 8)
+                                                    code[pos] es 0x48
+                                                    pos es pos mas 1
+                                                    code[pos] es 0x8B
+                                                    pos es pos mas 1
+                                                    code[pos] es 0x45
+                                                    pos es pos mas 1
+                                                    code[pos] es off mas 256
+                                                    pos es pos mas 1
+                                                sino
+                                                    off es 0
+                                                    i es 0
+                                                    mientras i es_menor vcnt haga
+                                                        si vname[i] es_igual h entonces
+                                                            off es voff[i]
+                                                        listo
+                                                        i es i mas 1
+                                                    listo
+                                                    code[pos] es 0x48
+                                                    pos es pos mas 1
+                                                    code[pos] es 0x8B
+                                                    pos es pos mas 1
+                                                    code[pos] es 0x45
+                                                    pos es pos mas 1
+                                                    code[pos] es off mas 256
+                                                    pos es pos mas 1
                                                 listo
-                                                ; mov rax, [rbp+off] to buffer
-                                                code[pos] es 0x48
-                                                pos es pos mas 1
-                                                code[pos] es 0x8B
-                                                pos es pos mas 1
-                                                code[pos] es 0x45
-                                                pos es pos mas 1
-                                                code[pos] es off mas 256
-                                                pos es pos mas 1
                                             listo
                                         listo
                                     listo
@@ -1169,6 +1257,87 @@ parcero principal() devuelve numero
                 si c es_mayor 0 entonces
                     mientras is_ws(c) es_igual 1 haga
                         c es leer_byte()
+                    listo
+                    ; Array write: arr[i] es val
+                    si c es_igual 91 entonces
+                        h es buf[0]
+                        c es leer_byte()
+                        val es 0
+                        mientras is_digit(c) es_igual 1 haga
+                            val es val por 10 mas (c menos 48)
+                            c es leer_byte()
+                        listo
+                        si c es_igual 93 entonces
+                            c es leer_byte()
+                        listo
+                        mientras is_ws(c) es_igual 1 haga
+                            c es leer_byte()
+                        listo
+                        ; expect 'es'
+                        si c es_igual 101 entonces
+                            numero an2
+                            an2 es leer_byte()
+                            si an2 es_igual 115 entonces
+                                c es leer_byte()
+                                mientras is_ws(c) es_igual 1 haga
+                                    c es leer_byte()
+                                listo
+                                ; Look up array base
+                                off es 0
+                                i es 0
+                                mientras i es_menor acnt haga
+                                    si aname[i] es_igual h entonces
+                                        off es aoff[i]
+                                    listo
+                                    i es i mas 1
+                                listo
+                                off es off mas (val por 8)
+                                ; Parse value (number only for now)
+                                si is_digit(c) es_igual 1 entonces
+                                    numero aval
+                                    aval es 0
+                                    mientras is_digit(c) es_igual 1 haga
+                                        aval es aval por 10 mas (c menos 48)
+                                        c es leer_byte()
+                                    listo
+                                    ; mov rax, imm64
+                                    numero avt
+                                    code[pos] es 0x48
+                                    pos es pos mas 1
+                                    code[pos] es 0xB8
+                                    pos es pos mas 1
+                                    avt es aval
+                                    code[pos] es avt menos ((avt entre 256) por 256)
+                                    pos es pos mas 1
+                                    avt es avt entre 256
+                                    code[pos] es avt menos ((avt entre 256) por 256)
+                                    pos es pos mas 1
+                                    avt es avt entre 256
+                                    code[pos] es avt menos ((avt entre 256) por 256)
+                                    pos es pos mas 1
+                                    avt es avt entre 256
+                                    code[pos] es avt
+                                    pos es pos mas 1
+                                    code[pos] es 0
+                                    pos es pos mas 1
+                                    code[pos] es 0
+                                    pos es pos mas 1
+                                    code[pos] es 0
+                                    pos es pos mas 1
+                                    code[pos] es 0
+                                    pos es pos mas 1
+                                    ; mov [rbp+off], rax = 48 89 45 off
+                                    code[pos] es 0x48
+                                    pos es pos mas 1
+                                    code[pos] es 0x89
+                                    pos es pos mas 1
+                                    code[pos] es 0x45
+                                    pos es pos mas 1
+                                    code[pos] es off mas 256
+                                    pos es pos mas 1
+                                listo
+                            listo
+                        listo
                     listo
                     si c es_igual 101 entonces
                         numero n2
@@ -1232,23 +1401,55 @@ parcero principal() devuelve numero
                                         c es leer_byte()
                                     listo
                                     vh es buf[0]
-                                    voff2 es 0
-                                    vi es 0
-                                    mientras vi es_menor vcnt haga
-                                        si vname[vi] es_igual vh entonces
-                                            voff2 es voff[vi]
+                                    si c es_igual 91 entonces
+                                        ; Simple array read - skip to ] and emit mov
+                                        numero aoff2
+                                        numero ai2
+                                        c es leer_byte()
+                                        val es 0
+                                        mientras is_digit(c) es_igual 1 haga
+                                            val es val por 10 mas (c menos 48)
+                                            c es leer_byte()
                                         listo
-                                        vi es vi mas 1
+                                        si c es_igual 93 entonces
+                                            c es leer_byte()
+                                        listo
+                                        ; Look up array base
+                                        aoff2 es 0
+                                        ai2 es 0
+                                        mientras ai2 es_menor acnt haga
+                                            si aname[ai2] es_igual vh entonces
+                                                aoff2 es aoff[ai2]
+                                            listo
+                                            ai2 es ai2 mas 1
+                                        listo
+                                        aoff2 es aoff2 mas (val por 8)
+                                        code[pos] es 0x48
+                                        pos es pos mas 1
+                                        code[pos] es 0x8B
+                                        pos es pos mas 1
+                                        code[pos] es 0x45
+                                        pos es pos mas 1
+                                        code[pos] es aoff2 mas 256
+                                        pos es pos mas 1
+                                    sino
+                                        voff2 es 0
+                                        vi es 0
+                                        mientras vi es_menor vcnt haga
+                                            si vname[vi] es_igual vh entonces
+                                                voff2 es voff[vi]
+                                            listo
+                                            vi es vi mas 1
+                                        listo
+                                        code[pos] es 0x48
+                                        pos es pos mas 1
+                                        code[pos] es 0x8B
+                                        pos es pos mas 1
+                                        code[pos] es 0x45
+                                        pos es pos mas 1
+                                        code[pos] es voff2 mas 256
+                                        pos es pos mas 1
                                     listo
-                                    ; mov rax, [rbp+off] to buffer
-                                    code[pos] es 0x48
-                                    pos es pos mas 1
-                                    code[pos] es 0x8B
-                                    pos es pos mas 1
-                                    code[pos] es 0x45
-                                    pos es pos mas 1
-                                    code[pos] es voff2 mas 256
-                                    pos es pos mas 1
                                 listo
                             listo
                             ; Check for operator - only skip spaces, not newlines
@@ -1367,23 +1568,55 @@ parcero principal() devuelve numero
                                                 c es leer_byte()
                                             listo
                                             vh2 es buf[0]
-                                            voff3 es 0
-                                            vi2 es 0
-                                            mientras vi2 es_menor vcnt haga
-                                                si vname[vi2] es_igual vh2 entonces
-                                                    voff3 es voff[vi2]
+                                            si c es_igual 91 entonces
+                                                ; Array read in second operand
+                                                numero aoff3
+                                                numero ai3
+                                                c es leer_byte()
+                                                val es 0
+                                                mientras is_digit(c) es_igual 1 haga
+                                                    val es val por 10 mas (c menos 48)
+                                                    c es leer_byte()
                                                 listo
-                                                vi2 es vi2 mas 1
+                                                si c es_igual 93 entonces
+                                                    c es leer_byte()
+                                                listo
+                                                aoff3 es 0
+                                                ai3 es 0
+                                                mientras ai3 es_menor acnt haga
+                                                    si aname[ai3] es_igual vh2 entonces
+                                                        aoff3 es aoff[ai3]
+                                                    listo
+                                                    ai3 es ai3 mas 1
+                                                listo
+                                                aoff3 es aoff3 mas (val por 8)
+                                                code[pos] es 0x48
+                                                pos es pos mas 1
+                                                code[pos] es 0x8B
+                                                pos es pos mas 1
+                                                code[pos] es 0x45
+                                                pos es pos mas 1
+                                                code[pos] es aoff3 mas 256
+                                                pos es pos mas 1
+                                            sino
+                                                voff3 es 0
+                                                vi2 es 0
+                                                mientras vi2 es_menor vcnt haga
+                                                    si vname[vi2] es_igual vh2 entonces
+                                                        voff3 es voff[vi2]
+                                                    listo
+                                                    vi2 es vi2 mas 1
+                                                listo
+                                                ; mov rax, [rbp+off]
+                                                code[pos] es 0x48
+                                                pos es pos mas 1
+                                                code[pos] es 0x8B
+                                                pos es pos mas 1
+                                                code[pos] es 0x45
+                                                pos es pos mas 1
+                                                code[pos] es voff3 mas 256
+                                                pos es pos mas 1
                                             listo
-                                            ; mov rax, [rbp+off]
-                                            code[pos] es 0x48
-                                            pos es pos mas 1
-                                            code[pos] es 0x8B
-                                            pos es pos mas 1
-                                            code[pos] es 0x45
-                                            pos es pos mas 1
-                                            code[pos] es voff3 mas 256
-                                            pos es pos mas 1
                                         listo
                                     listo
                                     ; Now rbx=left, rax=right, apply op
