@@ -82,6 +82,11 @@ extern current_token
 %define TOKEN_KW_ES         117
 %define TOKEN_KW_DEVUELVE   120
 %define TOKEN_KW_NADA       123
+%define TOKEN_KW_ARREGLO    124
+%define TOKEN_KW_DE         125
+%define TOKEN_KW_BYTE       126
+%define TOKEN_CORCHETE_IZQ  52
+%define TOKEN_CORCHETE_DER  53
 
 ; -----------------------------------------------------------------------------
 ; AST Node Types
@@ -105,6 +110,8 @@ extern current_token
 %define AST_NUMERO_LIT      44
 %define AST_TEXTO_LIT       45
 %define AST_BOOL_LIT        46
+%define AST_ARREGLO_TIPO    47
+%define AST_ARREGLO_ACCESO  48
 
 ; -----------------------------------------------------------------------------
 ; AST Node Sizes
@@ -205,6 +212,16 @@ extern current_token
 ; AST_BOOL_LIT: header(16) + value(1) + padding(7) = 24
 %define AST_BOOL_LIT_SIZE   24
 %define AST_BOOL_LIT_VAL    16
+
+; AST_ARREGLO_TIPO: header(16) + size(8) + elem_type(8) = 32
+%define AST_ARREGLO_TIPO_SIZE   32
+%define AST_ARREGLO_TIPO_LEN    16
+%define AST_ARREGLO_TIPO_ELEM   24
+
+; AST_ARREGLO_ACCESO: header(16) + array(8) + index(8) = 32
+%define AST_ARREGLO_ACCESO_SIZE   32
+%define AST_ARREGLO_ACCESO_ARR    16
+%define AST_ARREGLO_ACCESO_IDX    24
 
 ; Binary operators
 %define OP_MAS              1
@@ -703,6 +720,10 @@ parse_statement:
     je      .parse_variable
     cmp     cl, TOKEN_KW_BOOLEANO
     je      .parse_variable
+    cmp     cl, TOKEN_KW_BYTE
+    je      .parse_variable
+    cmp     cl, TOKEN_KW_ARREGLO
+    je      .parse_variable
     cmp     cl, TOKEN_IDENT
     je      .parse_ident_stmt
 
@@ -1078,10 +1099,9 @@ parse_variable:
     push    r12
     push    r13
 
-    ; Get type token
-    call    lexer_peek
-    movzx   ebx, byte [rax + TOKEN_TYPE]
-    call    lexer_next
+    ; Parse type (handles simple types and arreglo[N] de T)
+    call    parse_type
+    mov     rbx, rax                    ; Save type
 
     ; Allocate node
     mov     rdi, AST_VARIABLE_SIZE
@@ -1137,6 +1157,7 @@ parse_ident_or_assign:
     mov     rbp, rsp
     push    rbx
     push    r12
+    push    r13
 
     ; Get identifier
     call    lexer_peek
@@ -1155,11 +1176,71 @@ parse_ident_or_assign:
     cmp     cl, TOKEN_PAREN_IZQ
     je      .call
 
+    ; Check for '[' (array access)
+    cmp     cl, TOKEN_CORCHETE_IZQ
+    je      .array_access
+
     ; Just an identifier expression
     mov     rdi, AST_IDENT_SIZE
     call    arena_alloc
     mov     byte [rax], AST_IDENT
     mov     [rax + AST_IDENT_NAME], rbx
+    jmp     .return
+
+.array_access:
+    ; Create ident node for array
+    mov     rdi, AST_IDENT_SIZE
+    call    arena_alloc
+    mov     r12, rax
+    mov     byte [r12], AST_IDENT
+    mov     [r12 + AST_IDENT_NAME], rbx
+
+    ; Consume '['
+    call    lexer_next
+
+    ; Parse index expression
+    call    parse_expression
+    mov     r13, rax                    ; Save index
+
+    ; Expect ']'
+    mov     rdi, TOKEN_CORCHETE_DER
+    call    lexer_expect
+
+    ; Check for 'es' (array assignment)
+    call    lexer_peek
+    movzx   ecx, byte [rax + TOKEN_TYPE]
+    cmp     cl, TOKEN_KW_ES
+    je      .array_assignment
+
+    ; Just array access as expression
+    mov     rdi, AST_ARREGLO_ACCESO_SIZE
+    call    arena_alloc
+    mov     byte [rax], AST_ARREGLO_ACCESO
+    mov     [rax + AST_ARREGLO_ACCESO_ARR], r12
+    mov     [rax + AST_ARREGLO_ACCESO_IDX], r13
+    jmp     .return
+
+.array_assignment:
+    call    lexer_next                  ; Consume 'es'
+
+    ; Create array access node for target
+    mov     rdi, AST_ARREGLO_ACCESO_SIZE
+    call    arena_alloc
+    mov     rbx, rax
+    mov     byte [rbx], AST_ARREGLO_ACCESO
+    mov     [rbx + AST_ARREGLO_ACCESO_ARR], r12
+    mov     [rbx + AST_ARREGLO_ACCESO_IDX], r13
+
+    ; Parse value
+    call    parse_expression
+    mov     r12, rax                    ; Value
+
+    ; Create assignment node
+    mov     rdi, AST_ASIGNACION_SIZE
+    call    arena_alloc
+    mov     byte [rax], AST_ASIGNACION
+    mov     [rax + AST_ASIGNACION_TGT], rbx
+    mov     [rax + AST_ASIGNACION_VAL], r12
     jmp     .return
 
 .assignment:
@@ -1199,6 +1280,7 @@ parse_ident_or_assign:
     jmp     .return
 
 .return:
+    pop     r13
     pop     r12
     pop     rbx
     pop     rbp
@@ -1710,17 +1792,47 @@ parse_primary:
 .ident:
     call    lexer_next
 
-    ; Check for function call
+    ; Check for function call or array access
     call    lexer_peek
     movzx   ecx, byte [rax + TOKEN_TYPE]
     cmp     cl, TOKEN_PAREN_IZQ
     je      .ident_call
+    cmp     cl, TOKEN_CORCHETE_IZQ
+    je      .ident_array
 
     ; Just an identifier
     mov     rdi, AST_IDENT_SIZE
     call    arena_alloc
     mov     byte [rax], AST_IDENT
     mov     [rax + AST_IDENT_NAME], rbx
+    jmp     .return
+
+.ident_array:
+    ; Create array ident
+    mov     rdi, AST_IDENT_SIZE
+    call    arena_alloc
+    mov     r12, rax
+    mov     byte [r12], AST_IDENT
+    mov     [r12 + AST_IDENT_NAME], rbx
+
+    ; Consume '['
+    call    lexer_next
+
+    ; Parse index expression
+    call    parse_expression
+    push    rax                         ; Save index
+
+    ; Expect ']'
+    mov     rdi, TOKEN_CORCHETE_DER
+    call    lexer_expect
+
+    ; Create AST_ARREGLO_ACCESO node
+    mov     rdi, AST_ARREGLO_ACCESO_SIZE
+    call    arena_alloc
+    mov     byte [rax], AST_ARREGLO_ACCESO
+    mov     [rax + AST_ARREGLO_ACCESO_ARR], r12
+    pop     rcx
+    mov     [rax + AST_ARREGLO_ACCESO_IDX], rcx
     jmp     .return
 
 .ident_call:
@@ -1759,20 +1871,26 @@ parse_primary:
 parse_type:
     push    rbp
     mov     rbp, rsp
+    push    rbx
+    push    r12
 
     call    lexer_peek
     movzx   ecx, byte [rax + TOKEN_TYPE]
 
     cmp     cl, TOKEN_KW_NUMERO
-    je      .valid
+    je      .valid_simple
     cmp     cl, TOKEN_KW_TEXTO
-    je      .valid
+    je      .valid_simple
     cmp     cl, TOKEN_KW_BOOLEANO
-    je      .valid
+    je      .valid_simple
     cmp     cl, TOKEN_KW_NADA
-    je      .valid
+    je      .valid_simple
+    cmp     cl, TOKEN_KW_BYTE
+    je      .valid_simple
     cmp     cl, TOKEN_IDENT
-    je      .valid
+    je      .valid_simple
+    cmp     cl, TOKEN_KW_ARREGLO
+    je      .parse_array
 
     ; Error
     lea     rdi, [err_expect_type]
@@ -1780,13 +1898,64 @@ parse_type:
     xor     rax, rax
     jmp     .return
 
-.valid:
+.valid_simple:
     movzx   rax, cl                     ; Return token type as type id
     push    rax                         ; Save type before consuming token
     call    lexer_next
     pop     rax                         ; Restore type as return value
+    jmp     .return
+
+.parse_array:
+    ; Consume 'arreglo'
+    call    lexer_next
+
+    ; Expect '['
+    mov     rdi, TOKEN_CORCHETE_IZQ
+    call    lexer_expect
+    test    rax, rax
+    jz      .error_array
+
+    ; Expect number (array size)
+    call    lexer_peek
+    movzx   ecx, byte [rax + TOKEN_TYPE]
+    cmp     cl, TOKEN_NUMERO
+    jne     .error_array
+    mov     rbx, [rax + TOKEN_VALUE]    ; Save array size
+    call    lexer_next
+
+    ; Expect ']'
+    mov     rdi, TOKEN_CORCHETE_DER
+    call    lexer_expect
+    test    rax, rax
+    jz      .error_array
+
+    ; Expect 'de'
+    call    lexer_peek
+    movzx   ecx, byte [rax + TOKEN_TYPE]
+    cmp     cl, TOKEN_KW_DE
+    jne     .error_array
+    call    lexer_next
+
+    ; Parse element type recursively
+    call    parse_type
+    mov     r12, rax                    ; Element type
+
+    ; Allocate AST_ARREGLO_TIPO node
+    mov     rdi, AST_ARREGLO_TIPO_SIZE
+    call    arena_alloc
+    mov     byte [rax], AST_ARREGLO_TIPO
+    mov     [rax + AST_ARREGLO_TIPO_LEN], rbx
+    mov     [rax + AST_ARREGLO_TIPO_ELEM], r12
+    jmp     .return
+
+.error_array:
+    lea     rdi, [err_expect_type]
+    call    error_report
+    xor     rax, rax
 
 .return:
+    pop     r12
+    pop     rbx
     pop     rbp
     ret
 

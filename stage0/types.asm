@@ -37,6 +37,8 @@ extern error_report
 %define TYPE_TEXTO      115
 %define TYPE_BOOLEANO   116
 %define TYPE_NADA       123
+%define TYPE_BYTE       126
+%define TYPE_ARREGLO    200
 
 ; -----------------------------------------------------------------------------
 ; AST Node Types (from parser)
@@ -60,6 +62,8 @@ extern error_report
 %define AST_NUMERO_LIT      44
 %define AST_TEXTO_LIT       45
 %define AST_BOOL_LIT        46
+%define AST_ARREGLO_TIPO    47
+%define AST_ARREGLO_ACCESO  48
 
 ; AST structure offsets
 %define AST_KIND            0
@@ -133,6 +137,14 @@ extern error_report
 
 ; Literal offsets
 %define AST_LIT_VAL         16
+
+; Arreglo tipo offsets
+%define AST_ARREGLO_TIPO_LEN    16
+%define AST_ARREGLO_TIPO_ELEM   24
+
+; Arreglo acceso offsets
+%define AST_ARREGLO_ACCESO_ARR  16
+%define AST_ARREGLO_ACCESO_IDX  24
 
 ; Binary operators
 %define OP_MAS              1
@@ -740,9 +752,22 @@ check_asignacion:
 
     mov     rbx, rdi
 
-    ; Check target (should be identifier)
+    ; Check target - could be AST_IDENT or AST_ARREGLO_ACCESO
     mov     rdi, [rbx + AST_ASIGNACION_TGT]
+    movzx   eax, byte [rdi]
+    cmp     al, AST_ARREGLO_ACCESO
+    je      .array_target
+
+    ; Simple variable - get name directly
     mov     rdi, [rdi + AST_IDENT_NAME]
+    jmp     .lookup_target
+
+.array_target:
+    ; Array access - get name from nested AST_IDENT
+    mov     rdi, [rdi + AST_ARREGLO_ACCESO_ARR]
+    mov     rdi, [rdi + AST_IDENT_NAME]
+
+.lookup_target:
     call    symbols_lookup
 
     test    rax, rax
@@ -760,6 +785,19 @@ check_asignacion:
     mov     rdi, [rbx + AST_ASIGNACION_VAL]
     call    check_expression
 
+    ; For array targets, also check the index
+    mov     rdi, [rbx + AST_ASIGNACION_TGT]
+    movzx   eax, byte [rdi]
+    cmp     al, AST_ARREGLO_ACCESO
+    jne     .check_type
+
+    ; Check index expression
+    push    r12
+    mov     rdi, [rdi + AST_ARREGLO_ACCESO_IDX]
+    call    check_expression
+    pop     r12
+
+.check_type:
     ; Get symbol type
     mov     rdi, r12
     call    symbols_get_type
@@ -769,9 +807,20 @@ check_asignacion:
     mov     rdi, [rbx + AST_ASIGNACION_VAL]
     mov     rdx, [rdi + AST_TYPE_ID]
 
+    ; For array assignment, simplified type check (element is numero)
+    cmp     qword rcx, 0x1000           ; If type is a pointer (array type)
+    jae     .check_array_elem
+
     cmp     rcx, rdx
     je      .done
+    jmp     .type_error
 
+.check_array_elem:
+    ; Array element assignment - value should be numero
+    cmp     rdx, TYPE_NUMERO
+    je      .done
+
+.type_error:
     lea     rdi, [err_type_mismatch]
     call    error_report
     inc     qword [error_count]
@@ -810,6 +859,8 @@ check_expression:
     je      .unario
     cmp     al, AST_LLAMADA
     je      .llamada
+    cmp     al, AST_ARREGLO_ACCESO
+    je      .arreglo_acceso
 
     ; Unknown - set to unknown type
     mov     qword [rbx + AST_TYPE_ID], TYPE_UNKNOWN
@@ -841,6 +892,40 @@ check_expression:
 
 .llamada:
     call    check_llamada
+    jmp     .done
+
+.arreglo_acceso:
+    ; Check array access - verify array is defined and index is numeric
+    push    rbx
+    push    r12
+
+    mov     r12, rbx                    ; Save AST_ARREGLO_ACCESO node
+
+    ; Look up array variable in symbol table
+    mov     rdi, [r12 + AST_ARREGLO_ACCESO_ARR]
+    mov     rdi, [rdi + AST_IDENT_NAME]
+    call    symbols_lookup
+    test    rax, rax
+    jnz     .arreglo_found
+
+    ; Array not defined
+    lea     rdi, [err_undefined_var]
+    call    error_report
+    inc     qword [error_count]
+    mov     qword [r12 + AST_TYPE_ID], TYPE_UNKNOWN
+    jmp     .arreglo_done
+
+.arreglo_found:
+    ; Check index expression
+    mov     rdi, [r12 + AST_ARREGLO_ACCESO_IDX]
+    call    check_expression
+
+    ; Set result type to numero (simplified for Stage 0)
+    mov     qword [r12 + AST_TYPE_ID], TYPE_NUMERO
+
+.arreglo_done:
+    pop     r12
+    pop     rbx
     jmp     .done
 
 .done:
