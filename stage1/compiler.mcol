@@ -1,30 +1,4 @@
-; =============================================================================
-; MEDELLIN.COL - STAGE 1: SELF-HOSTING COMPILER
-; =============================================================================
-; A minimal self-hosting compiler written in Medellin.Col
-; Compiled by Stage 0, compiles Medellin.Col to x86-64 ELF
-;
-; Architecture: Single-pass streaming parser
-; - Tokens are read one at a time
-; - Return values pack: (next_char << 16) | (value << 8) | token_type
-; - This allows proper lookahead handling
-; =============================================================================
-
-; Token types
-; TOKEN_EOF       = 0
-; TOKEN_NUMERO    = 1     (number literal - value in bits 8-15)
-; TOKEN_IDENT     = 10
-; TOKEN_PARCERO   = 100
-; TOKEN_FIN       = 101
-; TOKEN_DEVUELVASE = 111
-; TOKEN_DEVUELVE  = 120
-; TOKEN_NUMERO_KW = 118
-; TOKEN_PAREN_IZQ = 50
-; TOKEN_PAREN_DER = 51
-
-; =============================================================================
-; Character classification
-; =============================================================================
+; Minimal Stage 1 compiler - find devuelvase NUMBER and generate ELF
 
 parcero is_digit(c: numero) devuelve numero
     si c mayor_igual 48 y c menor_igual 57 entonces
@@ -50,357 +24,62 @@ parcero is_alnum(c: numero) devuelve numero
     si is_alpha(c) es_igual 1 entonces
         devuelvase 1
     listo
-    si is_digit(c) es_igual 1 entonces
+    devuelvase is_digit(c)
+fin parcero
+
+parcero is_ws(c: numero) devuelve numero
+    si c es_igual 32 o c es_igual 9 o c es_igual 10 o c es_igual 13 entonces
         devuelvase 1
     listo
     devuelvase 0
 fin parcero
-
-parcero is_whitespace(c: numero) devuelve numero
-    si c es_igual 32 o c es_igual 9 entonces
-        devuelvase 1
-    listo
-    si c es_igual 10 o c es_igual 13 entonces
-        devuelvase 1
-    listo
-    devuelvase 0
-fin parcero
-
-; =============================================================================
-; Byte emission for ELF output
-; =============================================================================
 
 parcero emit(b: numero) devuelve numero
-    numero dummy
-    dummy es escribir_byte(b)
+    numero d
+    d es escribir_byte(b)
     devuelvase 0
 fin parcero
 
-parcero emit2(b1: numero, b2: numero) devuelve numero
-    numero dummy
-    dummy es emit(b1)
-    dummy es emit(b2)
+parcero emit_dword(v: numero) devuelve numero
+    numero d
+    numero t
+    t es v
+    d es emit(t menos ((t entre 256) por 256))
+    t es t entre 256
+    d es emit(t menos ((t entre 256) por 256))
+    t es t entre 256
+    d es emit(t menos ((t entre 256) por 256))
+    t es t entre 256
+    d es emit(t)
     devuelvase 0
 fin parcero
 
-parcero emit4(b1: numero, b2: numero, b3: numero, b4: numero) devuelve numero
-    numero dummy
-    dummy es emit(b1)
-    dummy es emit(b2)
-    dummy es emit(b3)
-    dummy es emit(b4)
+parcero emit_qword(v: numero) devuelve numero
+    numero d
+    d es emit_dword(v)
+    d es emit_dword(0)
     devuelvase 0
 fin parcero
 
-parcero emit_dword(val: numero) devuelve numero
-    numero dummy
-    numero v
-    v es val
-    dummy es emit(v menos ((v entre 256) por 256))
-    v es v entre 256
-    dummy es emit(v menos ((v entre 256) por 256))
-    v es v entre 256
-    dummy es emit(v menos ((v entre 256) por 256))
-    v es v entre 256
-    dummy es emit(v)
-    devuelvase 0
-fin parcero
-
-parcero emit_qword(val: numero) devuelve numero
-    numero dummy
-    dummy es emit_dword(val)
-    dummy es emit_dword(0)
-    devuelvase 0
-fin parcero
-
-; =============================================================================
-; ELF header generation
-; =============================================================================
-
-parcero emit_elf_header() devuelve numero
-    numero dummy
-    ; ELF magic
-    dummy es emit4(0x7F, 69, 76, 70)
-    ; Class=64bit, Data=LE, Version=1, OS=0
-    dummy es emit4(2, 1, 1, 0)
-    ; Padding
-    dummy es emit4(0, 0, 0, 0)
-    dummy es emit4(0, 0, 0, 0)
-    ; Type=EXEC, Machine=x86-64
-    dummy es emit2(2, 0)
-    dummy es emit2(0x3E, 0)
-    ; Version
-    dummy es emit_dword(1)
-    ; Entry point = 0x401000
-    dummy es emit_qword(0x401000)
-    ; Program header offset = 64
-    dummy es emit_qword(64)
-    ; Section header offset = 0
-    dummy es emit_qword(0)
-    ; Flags
-    dummy es emit_dword(0)
-    ; ELF header size = 64
-    dummy es emit2(64, 0)
-    ; Program header entry size = 56
-    dummy es emit2(56, 0)
-    ; Number of program headers = 1
-    dummy es emit2(1, 0)
-    ; Section header entry size
-    dummy es emit2(64, 0)
-    ; Number of section headers
-    dummy es emit2(0, 0)
-    ; Section string table index
-    dummy es emit2(0, 0)
-    devuelvase 0
-fin parcero
-
-parcero emit_program_header() devuelve numero
-    numero dummy
-    ; Type = LOAD
-    dummy es emit_dword(1)
-    ; Flags = R+X
-    dummy es emit_dword(5)
-    ; Offset = 0x1000
-    dummy es emit_qword(0x1000)
-    ; Vaddr = 0x401000
-    dummy es emit_qword(0x401000)
-    ; Paddr = 0x401000
-    dummy es emit_qword(0x401000)
-    ; Filesz = 0x100
-    dummy es emit_qword(0x100)
-    ; Memsz = 0x100
-    dummy es emit_qword(0x100)
-    ; Align = 0x1000
-    dummy es emit_qword(0x1000)
-    devuelvase 0
-fin parcero
-
-; =============================================================================
-; Code generation
-; =============================================================================
-
-parcero emit_exit_program(val: numero) devuelve numero
-    numero dummy
-    ; mov eax, val
-    dummy es emit(0xB8)
-    dummy es emit_dword(val)
-    ; mov edi, eax
-    dummy es emit2(0x89, 0xC7)
-    ; mov eax, 60
-    dummy es emit(0xB8)
-    dummy es emit_dword(60)
-    ; syscall
-    dummy es emit2(0x0F, 0x05)
-    devuelvase 0
-fin parcero
-
-; =============================================================================
-; Lexer - returns packed: (next_char << 16) | (num_value << 8) | token_type
-; For number tokens, num_value holds the parsed number (0-255 for now)
-; =============================================================================
-
-parcero skip_ws(c: numero) devuelve numero
-    mientras is_whitespace(c) es_igual 1 y c es_mayor 0 haga
-        c es leer_byte()
-    listo
-    mientras c es_igual 59 haga
-        mientras c es_mayor 0 y (no (c es_igual 10)) haga
-            c es leer_byte()
-        listo
-        c es leer_byte()
-        mientras is_whitespace(c) es_igual 1 y c es_mayor 0 haga
-            c es leer_byte()
-        listo
-    listo
-    devuelvase c
-fin parcero
-
-; Match keywords and return token type
-parcero match_keyword(b0: numero, b1: numero, b2: numero, b3: numero, b4: numero, b5: numero) devuelve numero
-    ; parcero = 112,97,114,99,101,114 (first 6 of 7)
-    si b0 es_igual 112 y b1 es_igual 97 entonces
-        si b2 es_igual 114 y b3 es_igual 99 entonces
-            si b4 es_igual 101 y b5 es_igual 114 entonces
-                devuelvase 100
-            listo
-        listo
-    listo
-    ; devuel (first 6 of devuelve/devuelvase)
-    si b0 es_igual 100 y b1 es_igual 101 entonces
-        si b2 es_igual 118 y b3 es_igual 117 entonces
-            si b4 es_igual 101 y b5 es_igual 108 entonces
-                devuelvase 200
-            listo
-        listo
-    listo
-    ; numero = 110,117,109,101,114,111
-    si b0 es_igual 110 y b1 es_igual 117 entonces
-        si b2 es_igual 109 y b3 es_igual 101 entonces
-            si b4 es_igual 114 y b5 es_igual 111 entonces
-                devuelvase 118
-            listo
-        listo
-    listo
-    ; fin = 102,105,110
-    si b0 es_igual 102 y b1 es_igual 105 entonces
-        si b2 es_igual 110 entonces
-            devuelvase 101
-        listo
-    listo
-    devuelvase 10
-fin parcero
-
-; Read next token, return packed value
-parcero next_token(c: numero) devuelve numero
-    arreglo[12] de numero buf
-    numero len
-    numero tok
-    numero num_val
-    numero result
-
-    c es skip_ws(c)
-
-    ; EOF
-    si c menor_igual 0 entonces
-        devuelvase 0
-    listo
-
-    ; Number literal
-    si is_digit(c) es_igual 1 entonces
-        num_val es 0
-        mientras is_digit(c) es_igual 1 haga
-            num_val es num_val por 10 mas (c menos 48)
-            c es leer_byte()
-        listo
-        ; Pack: (c << 16) | (num_val << 8) | 1
-        result es (c por 65536) mas (num_val por 256) mas 1
-        devuelvase result
-    listo
-
-    ; Identifier/keyword
-    si is_alpha(c) es_igual 1 entonces
-        len es 0
-        mientras is_alnum(c) es_igual 1 y len es_menor 15 haga
-            buf[len] es c
-            len es len mas 1
-            c es leer_byte()
-        listo
-
-        ; Determine token type
-        tok es 10
-        si len es_igual 3 entonces
-            tok es match_keyword(buf[0], buf[1], buf[2], 0, 0, 0)
-        listo
-        si len es_igual 6 entonces
-            tok es match_keyword(buf[0], buf[1], buf[2], buf[3], buf[4], buf[5])
-        listo
-        si len es_igual 7 entonces
-            tok es match_keyword(buf[0], buf[1], buf[2], buf[3], buf[4], buf[5])
-            si tok es_igual 100 y buf[6] es_igual 111 entonces
-                tok es 100
-            sino
-                si tok es_igual 100 entonces
-                    tok es 10
-                listo
-            listo
-        listo
-        si len es_igual 8 entonces
-            tok es match_keyword(buf[0], buf[1], buf[2], buf[3], buf[4], buf[5])
-            si tok es_igual 200 y buf[6] es_igual 118 y buf[7] es_igual 101 entonces
-                tok es 120
-            sino
-                si tok es_igual 200 entonces
-                    tok es 10
-                listo
-            listo
-        listo
-        si len es_igual 10 entonces
-            tok es match_keyword(buf[0], buf[1], buf[2], buf[3], buf[4], buf[5])
-            si tok es_igual 200 entonces
-                si buf[6] es_igual 118 y buf[7] es_igual 97 entonces
-                    si buf[8] es_igual 115 y buf[9] es_igual 101 entonces
-                        tok es 111
-                    sino
-                        tok es 10
-                    listo
-                sino
-                    tok es 10
-                listo
-            listo
-        listo
-
-        result es (c por 65536) mas tok
-        devuelvase result
-    listo
-
-    ; Punctuation
-    si c es_igual 40 entonces
-        c es leer_byte()
-        result es (c por 65536) mas 50
-        devuelvase result
-    listo
-    si c es_igual 41 entonces
-        c es leer_byte()
-        result es (c por 65536) mas 51
-        devuelvase result
-    listo
-
-    ; Skip unknown and recurse
-    c es leer_byte()
-    devuelvase next_token(c)
-fin parcero
-
-; =============================================================================
-; Extract components from packed token
-; =============================================================================
-
-parcero get_token_type(packed: numero) devuelve numero
-    ; token_type = packed & 0xFF
-    devuelvase packed menos ((packed entre 256) por 256)
-fin parcero
-
-parcero get_num_value(packed: numero) devuelve numero
-    ; num_value = (packed >> 8) & 0xFF
-    numero shifted
-    shifted es packed entre 256
-    devuelvase shifted menos ((shifted entre 256) por 256)
-fin parcero
-
-parcero get_next_char(packed: numero) devuelve numero
-    ; next_char = packed >> 16
-    devuelvase packed entre 65536
-fin parcero
-
-; =============================================================================
-; Main compiler - parse minimal program and generate ELF
-; Uses simple inline parsing instead of packed return values
-; =============================================================================
-
-parcero find_return_value() devuelve numero
-    arreglo[12] de numero buf
+parcero find_return() devuelve numero
+    arreglo[16] de numero buf
     numero c
     numero len
-    numero found
-    numero num_val
+    numero val
 
     c es leer_byte()
-    found es 0
-    num_val es 0
+    val es 0
 
-    mientras c es_mayor 0 y found es_igual 0 haga
-        ; Skip whitespace
-        mientras is_whitespace(c) es_igual 1 y c es_mayor 0 haga
+    mientras c es_mayor 0 haga
+        mientras is_ws(c) es_igual 1 y c es_mayor 0 haga
             c es leer_byte()
         listo
-
-        ; Skip comments
         si c es_igual 59 entonces
             mientras c es_mayor 0 y (no (c es_igual 10)) haga
                 c es leer_byte()
             listo
             c es leer_byte()
         sino
-            ; Read identifier
             si is_alpha(c) es_igual 1 entonces
                 len es 0
                 mientras is_alnum(c) es_igual 1 y len es_menor 15 haga
@@ -408,26 +87,21 @@ parcero find_return_value() devuelve numero
                     len es len mas 1
                     c es leer_byte()
                 listo
-
-                ; Check if it's devuelvase (len=10)
                 si len es_igual 10 entonces
-                    ; d=100, e=101, v=118, u=117, e=101, l=108, v=118, a=97, s=115, e=101
                     si buf[0] es_igual 100 y buf[1] es_igual 101 entonces
                         si buf[2] es_igual 118 y buf[3] es_igual 117 entonces
                             si buf[4] es_igual 101 y buf[5] es_igual 108 entonces
                                 si buf[6] es_igual 118 y buf[7] es_igual 97 entonces
                                     si buf[8] es_igual 115 y buf[9] es_igual 101 entonces
-                                        ; Found devuelvase - read the number
-                                        mientras is_whitespace(c) es_igual 1 y c es_mayor 0 haga
+                                        mientras is_ws(c) es_igual 1 haga
                                             c es leer_byte()
                                         listo
                                         si is_digit(c) es_igual 1 entonces
-                                            num_val es 0
                                             mientras is_digit(c) es_igual 1 haga
-                                                num_val es num_val por 10 mas (c menos 48)
+                                                val es val por 10 mas (c menos 48)
                                                 c es leer_byte()
                                             listo
-                                            found es 1
+                                            devuelvase val
                                         listo
                                     listo
                                 listo
@@ -440,31 +114,81 @@ parcero find_return_value() devuelve numero
             listo
         listo
     listo
-
-    devuelvase num_val
+    devuelvase val
 fin parcero
 
 parcero principal() devuelve numero
-    numero dummy
-    numero padding
-    numero exit_val
+    numero d
+    numero i
+    numero val
 
-    ; Parse source and find return value
-    exit_val es find_return_value()
+    val es find_return()
 
-    ; Emit ELF
-    dummy es emit_elf_header()
-    dummy es emit_program_header()
+    ; ELF header
+    d es emit(0x7F)
+    d es emit(69)
+    d es emit(76)
+    d es emit(70)
+    d es emit(2)
+    d es emit(1)
+    d es emit(1)
+    d es emit(0)
+    i es 0
+    mientras i es_menor 8 haga
+        d es emit(0)
+        i es i mas 1
+    listo
+    d es emit(2)
+    d es emit(0)
+    d es emit(0x3E)
+    d es emit(0)
+    d es emit_dword(1)
+    d es emit_qword(0x401000)
+    d es emit_qword(64)
+    d es emit_qword(0)
+    d es emit_dword(0)
+    d es emit(64)
+    d es emit(0)
+    d es emit(56)
+    d es emit(0)
+    d es emit(1)
+    d es emit(0)
+    d es emit(64)
+    d es emit(0)
+    d es emit(0)
+    d es emit(0)
+    d es emit(0)
+    d es emit(0)
 
-    ; Padding to 0x1000
-    padding es 0
-    mientras padding es_menor 3976 haga
-        dummy es emit(0)
-        padding es padding mas 1
+    ; Program header
+    d es emit_dword(1)
+    d es emit_dword(5)
+    d es emit_qword(0x1000)
+    d es emit_qword(0x401000)
+    d es emit_qword(0x401000)
+    d es emit_qword(0x100)
+    d es emit_qword(0x100)
+    d es emit_qword(0x1000)
+
+    ; Padding
+    i es 0
+    mientras i es_menor 3976 haga
+        d es emit(0)
+        i es i mas 1
     listo
 
-    ; Emit code with parsed return value
-    dummy es emit_exit_program(exit_val)
+    ; mov eax, val
+    d es emit(0xB8)
+    d es emit_dword(val)
+    ; mov edi, eax
+    d es emit(0x89)
+    d es emit(0xC7)
+    ; mov eax, 60
+    d es emit(0xB8)
+    d es emit_dword(60)
+    ; syscall
+    d es emit(0x0F)
+    d es emit(0x05)
 
     devuelvase 0
 fin parcero
