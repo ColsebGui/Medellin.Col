@@ -451,6 +451,9 @@ parcero lex_all() devuelve numero
 
         ; Check for EOF after whitespace
         si c menor_igual 0 entonces
+            ; Output EOF token before returning
+            dummy es write_number(0)
+            count es count mas 1
             devuelvase count
         listo
 

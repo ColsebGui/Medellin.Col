@@ -311,8 +311,9 @@ gen_parcero:
     inc     qword [func_count]
 
     ; Calculate stack size (8 bytes per local + alignment)
-    ; For now, allocate 256 bytes for locals
-    mov     qword [stack_size], 256
+    ; Allocate 4096 bytes for locals to support larger arrays
+    ; (256 was too small - arrays of 36+ elements overflowed)
+    mov     qword [stack_size], 4096
 
     ; Function prologue
     ; push rbp
