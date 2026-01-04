@@ -508,13 +508,20 @@ check_variable:
 
     call    check_expression
 
-    ; Verify type matches
+    ; Verify type matches (allow byte/numero interop)
     mov     rcx, [r12 + AST_VARIABLE_TYPE]
     mov     rdx, [r12 + AST_VARIABLE_INIT]
     mov     rdx, [rdx + AST_TYPE_ID]
 
     cmp     rcx, rdx
     je      .done
+
+    ; Check if both are numeric types (byte or numero)
+    mov     rdi, rcx
+    mov     rsi, rdx
+    call    types_numeric_compat
+    test    rax, rax
+    jnz     .done
 
     ; Type mismatch
     lea     rdi, [err_type_mismatch]
@@ -691,11 +698,18 @@ check_devuelvase:
     jz      .done
 
     mov     rcx, [rax + AST_PARCERO_RETTYPE]
-    mov     rdi, [rbx + AST_DEVUELVASE_VAL]
-    mov     rdx, [rdi + AST_TYPE_ID]
+    mov     rax, [rbx + AST_DEVUELVASE_VAL]
+    mov     rdx, [rax + AST_TYPE_ID]
 
     cmp     rcx, rdx
     je      .done
+
+    ; Check if both are numeric types (allow byte/numero interop)
+    mov     rdi, rcx
+    mov     rsi, rdx
+    call    types_numeric_compat
+    test    rax, rax
+    jnz     .done
 
     lea     rdi, [err_return_type]
     call    error_report
@@ -807,17 +821,26 @@ check_asignacion:
     mov     rdi, [rbx + AST_ASIGNACION_VAL]
     mov     rdx, [rdi + AST_TYPE_ID]
 
-    ; For array assignment, simplified type check (element is numero)
+    ; For array assignment, simplified type check (element is numero or byte)
     cmp     qword rcx, 0x1000           ; If type is a pointer (array type)
     jae     .check_array_elem
 
     cmp     rcx, rdx
     je      .done
+
+    ; Check if both are numeric (byte/numero compatible)
+    mov     rdi, rcx
+    mov     rsi, rdx
+    call    types_numeric_compat
+    test    rax, rax
+    jnz     .done
     jmp     .type_error
 
 .check_array_elem:
-    ; Array element assignment - value should be numero
+    ; Array element assignment - value should be numeric (numero or byte)
     cmp     rdx, TYPE_NUMERO
+    je      .done
+    cmp     rdx, TYPE_BYTE
     je      .done
 
 .type_error:
@@ -1168,6 +1191,35 @@ check_llamada:
     pop     r12
     pop     rbx
     pop     rbp
+    ret
+
+; -----------------------------------------------------------------------------
+; types_numeric_compat - Check if two types are numeric-compatible
+; -----------------------------------------------------------------------------
+; Input:  rdi = type1, rsi = type2
+; Output: rax = 1 if compatible, 0 if not
+; Note:   byte and numero are considered compatible for implicit conversion
+; -----------------------------------------------------------------------------
+types_numeric_compat:
+    ; Check if type1 is numeric (numero or byte)
+    cmp     rdi, TYPE_NUMERO
+    je      .type1_numeric
+    cmp     rdi, TYPE_BYTE
+    je      .type1_numeric
+    xor     rax, rax
+    ret
+
+.type1_numeric:
+    ; Check if type2 is numeric (numero or byte)
+    cmp     rsi, TYPE_NUMERO
+    je      .compatible
+    cmp     rsi, TYPE_BYTE
+    je      .compatible
+    xor     rax, rax
+    ret
+
+.compatible:
+    mov     rax, 1
     ret
 
 ; =============================================================================
