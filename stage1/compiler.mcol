@@ -340,6 +340,7 @@ parcero emit_nop() devuelve numero
 fin parcero
 
 parcero principal() devuelve numero
+    arreglo[256] de numero code
     arreglo[16] de numero buf
     arreglo[8] de numero vname
     arreglo[8] de numero voff
@@ -356,18 +357,29 @@ parcero principal() devuelve numero
     vcnt es 0
     pos es 0
     d es emit_elf_header()
-    ; Prologue
-    d es emit(0x55)
-    d es emit(0x48)
-    d es emit(0x89)
-    d es emit(0xE5)
-    d es emit(0x48)
-    d es emit(0x81)
-    d es emit(0xEC)
-    d es emit(0x00)
-    d es emit(0x01)
-    d es emit(0x00)
-    d es emit(0x00)
+    ; Prologue to buffer
+    code[pos] es 0x55
+    pos es pos mas 1
+    code[pos] es 0x48
+    pos es pos mas 1
+    code[pos] es 0x89
+    pos es pos mas 1
+    code[pos] es 0xE5
+    pos es pos mas 1
+    code[pos] es 0x48
+    pos es pos mas 1
+    code[pos] es 0x81
+    pos es pos mas 1
+    code[pos] es 0xEC
+    pos es pos mas 1
+    code[pos] es 0x00
+    pos es pos mas 1
+    code[pos] es 0x01
+    pos es pos mas 1
+    code[pos] es 0x00
+    pos es pos mas 1
+    code[pos] es 0x00
+    pos es pos mas 1
     c es leer_byte()
 
     ; Skip to body
@@ -485,7 +497,32 @@ parcero principal() devuelve numero
                                                 val es val por 10 mas (c menos 48)
                                                 c es leer_byte()
                                             listo
-                                            d es emit_mov_rax_imm(val)
+                                            ; mov rax, imm64 to buffer
+                                            code[pos] es 0x48
+                                            pos es pos mas 1
+                                            code[pos] es 0xB8
+                                            pos es pos mas 1
+                                            numero vt
+                                            vt es val
+                                            code[pos] es vt menos ((vt entre 256) por 256)
+                                            pos es pos mas 1
+                                            vt es vt entre 256
+                                            code[pos] es vt menos ((vt entre 256) por 256)
+                                            pos es pos mas 1
+                                            vt es vt entre 256
+                                            code[pos] es vt menos ((vt entre 256) por 256)
+                                            pos es pos mas 1
+                                            vt es vt entre 256
+                                            code[pos] es vt
+                                            pos es pos mas 1
+                                            code[pos] es 0
+                                            pos es pos mas 1
+                                            code[pos] es 0
+                                            pos es pos mas 1
+                                            code[pos] es 0
+                                            pos es pos mas 1
+                                            code[pos] es 0
+                                            pos es pos mas 1
                                         sino
                                             si is_alpha(c) es_igual 1 entonces
                                                 len es 0
@@ -503,7 +540,15 @@ parcero principal() devuelve numero
                                                     listo
                                                     i es i mas 1
                                                 listo
-                                                d es emit_mov_rax_rbp_off(off)
+                                                ; mov rax, [rbp+off] to buffer
+                                                code[pos] es 0x48
+                                                pos es pos mas 1
+                                                code[pos] es 0x8B
+                                                pos es pos mas 1
+                                                code[pos] es 0x45
+                                                pos es pos mas 1
+                                                code[pos] es off mas 256
+                                                pos es pos mas 1
                                             listo
                                         listo
                                     listo
@@ -542,7 +587,32 @@ parcero principal() devuelve numero
                                     val es val por 10 mas (c menos 48)
                                     c es leer_byte()
                                 listo
-                                d es emit_mov_rax_imm(val)
+                                ; mov rax, imm64 to buffer
+                                numero vt2
+                                code[pos] es 0x48
+                                pos es pos mas 1
+                                code[pos] es 0xB8
+                                pos es pos mas 1
+                                vt2 es val
+                                code[pos] es vt2 menos ((vt2 entre 256) por 256)
+                                pos es pos mas 1
+                                vt2 es vt2 entre 256
+                                code[pos] es vt2 menos ((vt2 entre 256) por 256)
+                                pos es pos mas 1
+                                vt2 es vt2 entre 256
+                                code[pos] es vt2 menos ((vt2 entre 256) por 256)
+                                pos es pos mas 1
+                                vt2 es vt2 entre 256
+                                code[pos] es vt2
+                                pos es pos mas 1
+                                code[pos] es 0
+                                pos es pos mas 1
+                                code[pos] es 0
+                                pos es pos mas 1
+                                code[pos] es 0
+                                pos es pos mas 1
+                                code[pos] es 0
+                                pos es pos mas 1
                             sino
                                 si is_alpha(c) es_igual 1 entonces
                                     numero vh
@@ -563,7 +633,15 @@ parcero principal() devuelve numero
                                         listo
                                         vi es vi mas 1
                                     listo
-                                    d es emit_mov_rax_rbp_off(voff2)
+                                    ; mov rax, [rbp+off] to buffer
+                                    code[pos] es 0x48
+                                    pos es pos mas 1
+                                    code[pos] es 0x8B
+                                    pos es pos mas 1
+                                    code[pos] es 0x45
+                                    pos es pos mas 1
+                                    code[pos] es voff2 mas 256
+                                    pos es pos mas 1
                                 listo
                             listo
                             ; Check for operator - only skip spaces, not newlines
@@ -631,7 +709,9 @@ parcero principal() devuelve numero
                                     listo
                                 listo
                                 si op es_mayor 0 entonces
-                                    d es emit_push_rax()
+                                    ; push rax
+                                    code[pos] es 0x50
+                                    pos es pos mas 1
                                     mientras is_ws(c) es_igual 1 haga
                                         c es leer_byte()
                                     listo
@@ -642,7 +722,32 @@ parcero principal() devuelve numero
                                             val es val por 10 mas (c menos 48)
                                             c es leer_byte()
                                         listo
-                                        d es emit_mov_rax_imm(val)
+                                        ; mov rax, imm64
+                                        numero vt3
+                                        code[pos] es 0x48
+                                        pos es pos mas 1
+                                        code[pos] es 0xB8
+                                        pos es pos mas 1
+                                        vt3 es val
+                                        code[pos] es vt3 menos ((vt3 entre 256) por 256)
+                                        pos es pos mas 1
+                                        vt3 es vt3 entre 256
+                                        code[pos] es vt3 menos ((vt3 entre 256) por 256)
+                                        pos es pos mas 1
+                                        vt3 es vt3 entre 256
+                                        code[pos] es vt3 menos ((vt3 entre 256) por 256)
+                                        pos es pos mas 1
+                                        vt3 es vt3 entre 256
+                                        code[pos] es vt3
+                                        pos es pos mas 1
+                                        code[pos] es 0
+                                        pos es pos mas 1
+                                        code[pos] es 0
+                                        pos es pos mas 1
+                                        code[pos] es 0
+                                        pos es pos mas 1
+                                        code[pos] es 0
+                                        pos es pos mas 1
                                     sino
                                         si is_alpha(c) es_igual 1 entonces
                                             numero vh2
@@ -663,49 +768,157 @@ parcero principal() devuelve numero
                                                 listo
                                                 vi2 es vi2 mas 1
                                             listo
-                                            d es emit_mov_rax_rbp_off(voff3)
+                                            ; mov rax, [rbp+off]
+                                            code[pos] es 0x48
+                                            pos es pos mas 1
+                                            code[pos] es 0x8B
+                                            pos es pos mas 1
+                                            code[pos] es 0x45
+                                            pos es pos mas 1
+                                            code[pos] es voff3 mas 256
+                                            pos es pos mas 1
                                         listo
                                     listo
                                     ; Now rbx=left, rax=right, apply op
-                                    d es emit_pop_rbx()
-                                    ; Swap: we need left op right, but rbx=left, rax=right
-                                    ; For add/mul order doesn't matter
-                                    ; For sub/div we need rax=left, rbx=right
-                                    ; So swap them: xchg rax,rbx = 48 87 D8
-                                    d es emit(0x48)
-                                    d es emit(0x87)
-                                    d es emit(0xD8)
+                                    ; pop rbx
+                                    code[pos] es 0x5B
+                                    pos es pos mas 1
+                                    ; xchg rax,rbx
+                                    code[pos] es 0x48
+                                    pos es pos mas 1
+                                    code[pos] es 0x87
+                                    pos es pos mas 1
+                                    code[pos] es 0xD8
+                                    pos es pos mas 1
                                     si op es_igual 1 entonces
-                                        d es emit_add_rax_rbx()
+                                        ; add rax, rbx
+                                        code[pos] es 0x48
+                                        pos es pos mas 1
+                                        code[pos] es 0x01
+                                        pos es pos mas 1
+                                        code[pos] es 0xD8
+                                        pos es pos mas 1
                                     listo
                                     si op es_igual 2 entonces
-                                        d es emit_sub_rax_rbx()
+                                        ; sub rax, rbx
+                                        code[pos] es 0x48
+                                        pos es pos mas 1
+                                        code[pos] es 0x29
+                                        pos es pos mas 1
+                                        code[pos] es 0xD8
+                                        pos es pos mas 1
                                     listo
                                     si op es_igual 3 entonces
-                                        d es emit_mul_rax_rbx()
+                                        ; imul rax, rbx
+                                        code[pos] es 0x48
+                                        pos es pos mas 1
+                                        code[pos] es 0x0F
+                                        pos es pos mas 1
+                                        code[pos] es 0xAF
+                                        pos es pos mas 1
+                                        code[pos] es 0xC3
+                                        pos es pos mas 1
                                     listo
                                     si op es_igual 4 entonces
-                                        d es emit_div_rax_rbx()
+                                        ; cqo + idiv rbx
+                                        code[pos] es 0x48
+                                        pos es pos mas 1
+                                        code[pos] es 0x99
+                                        pos es pos mas 1
+                                        code[pos] es 0x48
+                                        pos es pos mas 1
+                                        code[pos] es 0xF7
+                                        pos es pos mas 1
+                                        code[pos] es 0xFB
+                                        pos es pos mas 1
                                     listo
                                     ; Comparisons: cmp, setX, movzx
                                     si op es_igual 5 entonces
-                                        d es emit_cmp_rax_rbx()
-                                        d es emit_sete_al()
-                                        d es emit_movzx_rax_al()
+                                        ; cmp rax, rbx
+                                        code[pos] es 0x48
+                                        pos es pos mas 1
+                                        code[pos] es 0x39
+                                        pos es pos mas 1
+                                        code[pos] es 0xD8
+                                        pos es pos mas 1
+                                        ; sete al
+                                        code[pos] es 0x0F
+                                        pos es pos mas 1
+                                        code[pos] es 0x94
+                                        pos es pos mas 1
+                                        code[pos] es 0xC0
+                                        pos es pos mas 1
+                                        ; movzx rax, al
+                                        code[pos] es 0x48
+                                        pos es pos mas 1
+                                        code[pos] es 0x0F
+                                        pos es pos mas 1
+                                        code[pos] es 0xB6
+                                        pos es pos mas 1
+                                        code[pos] es 0xC0
+                                        pos es pos mas 1
                                     listo
                                     si op es_igual 6 entonces
-                                        d es emit_cmp_rax_rbx()
-                                        d es emit_setl_al()
-                                        d es emit_movzx_rax_al()
+                                        ; cmp rax, rbx
+                                        code[pos] es 0x48
+                                        pos es pos mas 1
+                                        code[pos] es 0x39
+                                        pos es pos mas 1
+                                        code[pos] es 0xD8
+                                        pos es pos mas 1
+                                        ; setl al
+                                        code[pos] es 0x0F
+                                        pos es pos mas 1
+                                        code[pos] es 0x9C
+                                        pos es pos mas 1
+                                        code[pos] es 0xC0
+                                        pos es pos mas 1
+                                        ; movzx rax, al
+                                        code[pos] es 0x48
+                                        pos es pos mas 1
+                                        code[pos] es 0x0F
+                                        pos es pos mas 1
+                                        code[pos] es 0xB6
+                                        pos es pos mas 1
+                                        code[pos] es 0xC0
+                                        pos es pos mas 1
                                     listo
                                     si op es_igual 7 entonces
-                                        d es emit_cmp_rax_rbx()
-                                        d es emit_setg_al()
-                                        d es emit_movzx_rax_al()
+                                        ; cmp rax, rbx
+                                        code[pos] es 0x48
+                                        pos es pos mas 1
+                                        code[pos] es 0x39
+                                        pos es pos mas 1
+                                        code[pos] es 0xD8
+                                        pos es pos mas 1
+                                        ; setg al
+                                        code[pos] es 0x0F
+                                        pos es pos mas 1
+                                        code[pos] es 0x9F
+                                        pos es pos mas 1
+                                        code[pos] es 0xC0
+                                        pos es pos mas 1
+                                        ; movzx rax, al
+                                        code[pos] es 0x48
+                                        pos es pos mas 1
+                                        code[pos] es 0x0F
+                                        pos es pos mas 1
+                                        code[pos] es 0xB6
+                                        pos es pos mas 1
+                                        code[pos] es 0xC0
+                                        pos es pos mas 1
                                     listo
                                 listo
                             listo
-                            d es emit_mov_rbp_off_rax(off)
+                            ; mov [rbp+off], rax
+                            code[pos] es 0x48
+                            pos es pos mas 1
+                            code[pos] es 0x89
+                            pos es pos mas 1
+                            code[pos] es 0x45
+                            pos es pos mas 1
+                            code[pos] es off mas 256
+                            pos es pos mas 1
                         sino
                             c es n2
                         listo
@@ -717,6 +930,42 @@ parcero principal() devuelve numero
         listo
     listo
 
-    d es emit_epilogue()
+    ; Epilogue to buffer
+    code[pos] es 0x48
+    pos es pos mas 1
+    code[pos] es 0x89
+    pos es pos mas 1
+    code[pos] es 0xEC
+    pos es pos mas 1
+    code[pos] es 0x5D
+    pos es pos mas 1
+    code[pos] es 0x48
+    pos es pos mas 1
+    code[pos] es 0x89
+    pos es pos mas 1
+    code[pos] es 0xC7
+    pos es pos mas 1
+    code[pos] es 0xB8
+    pos es pos mas 1
+    code[pos] es 0x3C
+    pos es pos mas 1
+    code[pos] es 0x00
+    pos es pos mas 1
+    code[pos] es 0x00
+    pos es pos mas 1
+    code[pos] es 0x00
+    pos es pos mas 1
+    code[pos] es 0x0F
+    pos es pos mas 1
+    code[pos] es 0x05
+    pos es pos mas 1
+
+    ; Flush buffer
+    i es 0
+    mientras i es_menor pos haga
+        d es escribir_byte(code[i])
+        i es i mas 1
+    listo
+
     devuelvase 0
 fin parcero
