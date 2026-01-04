@@ -1,0 +1,102 @@
+; =============================================================================
+; MEDELLIN.COL - STAGE 1: LEXER
+; =============================================================================
+; Tokenizer for Medellin.Col source code
+; Uses arrays to simulate token buffer structure
+; =============================================================================
+
+; Token types
+; TOKEN_EOF       es 0
+; TOKEN_NUMERO    es 1
+; TOKEN_TEXTO     es 2
+; TOKEN_IDENT     es 10
+; TOKEN_PARCERO   es 100
+; TOKEN_FIN       es 101
+; TOKEN_SI        es 102
+; ... (more token types)
+
+; Token structure offsets (each token is 32 bytes)
+; OFFSET_TYPE   es 0
+; OFFSET_VALUE  es 8
+; OFFSET_LINE   es 16
+; OFFSET_COL    es 24
+; TOKEN_SIZE    es 32
+
+; Global state - simulated with function-local statics for now
+; (In full implementation, these would be module globals)
+
+parcero lex_is_digit(c: numero) devuelve numero
+    ; Check if character is a digit (0-9)
+    si c mayor_igual 0x30 y c menor_igual 0x39 entonces
+        devuelvase 1
+    listo
+    devuelvase 0
+fin parcero
+
+parcero lex_is_alpha(c: numero) devuelve numero
+    ; Check if character is a letter (a-z, A-Z)
+    si c mayor_igual 0x41 y c menor_igual 0x5A entonces
+        devuelvase 1
+    listo
+    si c mayor_igual 0x61 y c menor_igual 0x7A entonces
+        devuelvase 1
+    listo
+    devuelvase 0
+fin parcero
+
+parcero lex_is_alnum(c: numero) devuelve numero
+    ; Check if character is alphanumeric or underscore
+    si lex_is_alpha(c) es_igual 1 entonces
+        devuelvase 1
+    listo
+    si lex_is_digit(c) es_igual 1 entonces
+        devuelvase 1
+    listo
+    si c es_igual 0x5F entonces
+        ; Underscore _
+        devuelvase 1
+    listo
+    devuelvase 0
+fin parcero
+
+parcero lex_is_whitespace(c: numero) devuelve numero
+    ; Check if character is whitespace
+    si c es_igual 0x20 entonces
+        devuelvase 1
+    listo
+    si c es_igual 0x09 entonces
+        devuelvase 1
+    listo
+    si c es_igual 0x0A entonces
+        devuelvase 1
+    listo
+    si c es_igual 0x0D entonces
+        devuelvase 1
+    listo
+    devuelvase 0
+fin parcero
+
+; For testing - returns sum of helper function results
+parcero test_lexer_helpers() devuelve numero
+    numero result
+    result es 0
+
+    ; Test is_digit
+    result es result mas lex_is_digit(0x35)     ; '5' -> 1
+    result es result mas lex_is_digit(0x41)     ; 'A' -> 0
+
+    ; Test is_alpha
+    result es result mas lex_is_alpha(0x41)     ; 'A' -> 1
+    result es result mas lex_is_alpha(0x35)     ; '5' -> 0
+
+    ; Test is_whitespace
+    result es result mas lex_is_whitespace(0x20) ; ' ' -> 1
+    result es result mas lex_is_whitespace(0x41) ; 'A' -> 0
+
+    ; Expected: 1 + 0 + 1 + 0 + 1 + 0 = 3
+    devuelvase result
+fin parcero
+
+parcero principal() devuelve numero
+    devuelvase test_lexer_helpers()
+fin parcero

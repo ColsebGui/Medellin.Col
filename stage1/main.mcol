@@ -1,0 +1,53 @@
+; =============================================================================
+; MEDELLIN.COL - STAGE 1: SELF-HOSTING COMPILER
+; =============================================================================
+; Main entry point for the Stage 1 compiler
+; Written in Medellin.Col, compiled by Stage 0
+; =============================================================================
+
+; -----------------------------------------------------------------------------
+; Memory layout constants (using flat arrays for simplicity)
+; -----------------------------------------------------------------------------
+; Token size: 32 bytes (type, value, line, col, each 8 bytes)
+; Symbol size: 32 bytes (name_ptr, type_id, kind, scope, offset, padding)
+; AST nodes: variable size, type byte at offset 0
+; -----------------------------------------------------------------------------
+
+; Maximum limits
+; MAX_TOKENS es 8192
+; MAX_SYMBOLS es 1024
+; MAX_CODE es 65536
+; MAX_SOURCE es 131072
+
+parcero principal() devuelve numero
+    ; Simple test for now - verify Stage 0 works with complex programs
+    numero resultado
+
+    ; Test hex literals
+    numero hex_test
+    hex_test es 0xFF
+
+    ; Test arrays
+    arreglo[16] de numero test_arr
+    test_arr[0] es 10
+    test_arr[1] es 20
+    test_arr[2] es 30
+
+    ; Test arithmetic
+    resultado es test_arr[0] mas test_arr[1] mas test_arr[2]
+
+    ; Test hex arithmetic
+    resultado es resultado mas hex_test
+
+    ; Test loops
+    numero i
+    i es 0
+    mientras i es_menor 5 haga
+        resultado es resultado mas 1
+        i es i mas 1
+    listo
+
+    ; resultado should be 60 + 255 + 5 = 320
+    ; But exit code is mod 256, so 320 - 256 = 64
+    devuelvase resultado
+fin parcero
