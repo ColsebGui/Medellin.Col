@@ -1,0 +1,10 @@
+; Test function with many parameters
+parcero test10(a: numero, b: numero, c: numero, d: numero, e: numero, f: numero, g: numero, h: numero, i: numero, j: numero) devuelve numero
+    devuelvase a mas b mas c mas d mas e mas f mas g mas h mas i mas j
+fin parcero
+
+parcero principal() devuelve numero
+    numero x
+    x es test10(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+    devuelvase x
+fin parcero

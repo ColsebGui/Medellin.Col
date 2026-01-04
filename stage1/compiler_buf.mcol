@@ -1,0 +1,483 @@
+; Stage 1 Compiler - Buffered output, flattened structure
+; Uses flag variables instead of deep nesting
+
+parcero is_digit(c: numero) devuelve numero
+    si c mayor_igual 48 y c menor_igual 57 entonces
+        devuelvase 1
+    listo
+    devuelvase 0
+fin parcero
+
+parcero is_alpha(c: numero) devuelve numero
+    si c mayor_igual 65 y c menor_igual 90 entonces
+        devuelvase 1
+    listo
+    si c mayor_igual 97 y c menor_igual 122 entonces
+        devuelvase 1
+    listo
+    si c es_igual 95 entonces
+        devuelvase 1
+    listo
+    devuelvase 0
+fin parcero
+
+parcero is_alnum(c: numero) devuelve numero
+    si is_alpha(c) es_igual 1 entonces
+        devuelvase 1
+    listo
+    devuelvase is_digit(c)
+fin parcero
+
+parcero is_ws(c: numero) devuelve numero
+    si c es_igual 32 o c es_igual 9 o c es_igual 10 o c es_igual 13 entonces
+        devuelvase 1
+    listo
+    devuelvase 0
+fin parcero
+
+parcero emit(b: numero) devuelve numero
+    numero d
+    d es escribir_byte(b)
+    devuelvase 1
+fin parcero
+
+parcero emit_dword(v: numero) devuelve numero
+    numero d
+    numero t
+    t es v
+    d es emit(t menos ((t entre 256) por 256))
+    t es t entre 256
+    d es emit(t menos ((t entre 256) por 256))
+    t es t entre 256
+    d es emit(t menos ((t entre 256) por 256))
+    t es t entre 256
+    d es emit(t)
+    devuelvase 4
+fin parcero
+
+parcero emit_qword(v: numero) devuelve numero
+    numero d
+    d es emit_dword(v)
+    d es emit_dword(0)
+    devuelvase 8
+fin parcero
+
+parcero emit_elf_header() devuelve numero
+    numero d
+    numero i
+    d es emit(0x7F)
+    d es emit(69)
+    d es emit(76)
+    d es emit(70)
+    d es emit(2)
+    d es emit(1)
+    d es emit(1)
+    d es emit(0)
+    i es 0
+    mientras i es_menor 8 haga
+        d es emit(0)
+        i es i mas 1
+    listo
+    d es emit(2)
+    d es emit(0)
+    d es emit(0x3E)
+    d es emit(0)
+    d es emit_dword(1)
+    d es emit_qword(0x401000)
+    d es emit_qword(64)
+    d es emit_qword(0)
+    d es emit_dword(0)
+    d es emit(64)
+    d es emit(0)
+    d es emit(56)
+    d es emit(0)
+    d es emit(1)
+    d es emit(0)
+    d es emit(64)
+    d es emit(0)
+    d es emit(0)
+    d es emit(0)
+    d es emit(0)
+    d es emit(0)
+    d es emit_dword(1)
+    d es emit_dword(5)
+    d es emit_qword(0x1000)
+    d es emit_qword(0x401000)
+    d es emit_qword(0x401000)
+    d es emit_qword(0x1000)
+    d es emit_qword(0x1000)
+    d es emit_qword(0x1000)
+    i es 0
+    mientras i es_menor 3976 haga
+        d es emit(0)
+        i es i mas 1
+    listo
+    devuelvase 0
+fin parcero
+
+; Check if buf matches "devuelve" (8 chars)
+parcero is_devuelve(b0: numero, b1: numero, b2: numero, b3: numero, b4: numero, b5: numero, b6: numero, b7: numero) devuelve numero
+    si b0 es_igual 100 y b1 es_igual 101 y b2 es_igual 118 y b3 es_igual 117 entonces
+        si b4 es_igual 101 y b5 es_igual 108 y b6 es_igual 118 y b7 es_igual 101 entonces
+            devuelvase 1
+        listo
+    listo
+    devuelvase 0
+fin parcero
+
+; Check if buf matches "numero" (6 chars)
+parcero is_numero(b0: numero, b1: numero, b2: numero, b3: numero, b4: numero, b5: numero) devuelve numero
+    si b0 es_igual 110 y b1 es_igual 117 y b2 es_igual 109 entonces
+        si b3 es_igual 101 y b4 es_igual 114 y b5 es_igual 111 entonces
+            devuelvase 1
+        listo
+    listo
+    devuelvase 0
+fin parcero
+
+; Check if buf matches "devuelvase" (10 chars)
+parcero is_devuelvase(b0: numero, b1: numero, b2: numero, b3: numero, b4: numero, b5: numero, b6: numero, b7: numero, b8: numero, b9: numero) devuelve numero
+    si b0 es_igual 100 y b1 es_igual 101 y b2 es_igual 118 y b3 es_igual 117 entonces
+        si b4 es_igual 101 y b5 es_igual 108 y b6 es_igual 118 y b7 es_igual 97 entonces
+            si b8 es_igual 115 y b9 es_igual 101 entonces
+                devuelvase 1
+            listo
+        listo
+    listo
+    devuelvase 0
+fin parcero
+
+; Check if buf matches "fin" (3 chars)
+parcero is_fin(b0: numero, b1: numero, b2: numero) devuelve numero
+    si b0 es_igual 102 y b1 es_igual 105 y b2 es_igual 110 entonces
+        devuelvase 1
+    listo
+    devuelvase 0
+fin parcero
+
+parcero principal() devuelve numero
+    arreglo[512] de numero code
+    arreglo[16] de numero buf
+    arreglo[16] de numero vname
+    arreglo[16] de numero voff
+    numero pos
+    numero c
+    numero d
+    numero len
+    numero vcnt
+    numero h
+    numero val
+    numero off
+    numero i
+    numero v
+    numero matched
+    numero n2
+
+    pos es 0
+    vcnt es 0
+
+    d es emit_elf_header()
+
+    ; Prologue to buffer
+    code[pos] es 0x55
+    pos es pos mas 1
+    code[pos] es 0x48
+    pos es pos mas 1
+    code[pos] es 0x89
+    pos es pos mas 1
+    code[pos] es 0xE5
+    pos es pos mas 1
+    code[pos] es 0x48
+    pos es pos mas 1
+    code[pos] es 0x81
+    pos es pos mas 1
+    code[pos] es 0xEC
+    pos es pos mas 1
+    code[pos] es 0x00
+    pos es pos mas 1
+    code[pos] es 0x01
+    pos es pos mas 1
+    code[pos] es 0x00
+    pos es pos mas 1
+    code[pos] es 0x00
+    pos es pos mas 1
+
+    c es leer_byte()
+
+    ; Skip to body - look for "devuelve"
+    mientras c es_mayor 0 haga
+        mientras is_ws(c) es_igual 1 y c es_mayor 0 haga
+            c es leer_byte()
+        listo
+        si c es_igual 59 entonces
+            mientras c es_mayor 0 y (no (c es_igual 10)) haga
+                c es leer_byte()
+            listo
+            c es leer_byte()
+        sino
+            si is_alpha(c) es_igual 1 entonces
+                len es 0
+                mientras is_alnum(c) es_igual 1 y len es_menor 15 haga
+                    buf[len] es c
+                    len es len mas 1
+                    c es leer_byte()
+                listo
+                matched es 0
+                si len es_igual 8 entonces
+                    matched es is_devuelve(buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7])
+                listo
+                si matched es_igual 1 entonces
+                    mientras is_ws(c) es_igual 1 haga
+                        c es leer_byte()
+                    listo
+                    mientras is_alnum(c) es_igual 1 haga
+                        c es leer_byte()
+                    listo
+                    c es 0 menos 1
+                listo
+            sino
+                c es leer_byte()
+            listo
+        listo
+    listo
+
+    c es leer_byte()
+
+    ; Parse body
+    mientras c es_mayor 0 haga
+        mientras is_ws(c) es_igual 1 y c es_mayor 0 haga
+            c es leer_byte()
+        listo
+        mientras c es_igual 59 haga
+            mientras c es_mayor 0 y (no (c es_igual 10)) haga
+                c es leer_byte()
+            listo
+            c es leer_byte()
+            mientras is_ws(c) es_igual 1 y c es_mayor 0 haga
+                c es leer_byte()
+            listo
+        listo
+
+        si c menor_igual 0 entonces
+            c es 0
+        sino
+            si is_alpha(c) es_igual 1 entonces
+                len es 0
+                mientras is_alnum(c) es_igual 1 y len es_menor 15 haga
+                    buf[len] es c
+                    len es len mas 1
+                    c es leer_byte()
+                listo
+
+                matched es 0
+
+                ; Check "fin"
+                si len es_igual 3 entonces
+                    si is_fin(buf[0], buf[1], buf[2]) es_igual 1 entonces
+                        c es 0
+                        matched es 1
+                    listo
+                listo
+
+                ; Check "numero"
+                si matched es_igual 0 y len es_igual 6 y c es_mayor 0 entonces
+                    si is_numero(buf[0], buf[1], buf[2], buf[3], buf[4], buf[5]) es_igual 1 entonces
+                        matched es 1
+                        mientras is_ws(c) es_igual 1 haga
+                            c es leer_byte()
+                        listo
+                        len es 0
+                        mientras is_alnum(c) es_igual 1 y len es_menor 15 haga
+                            buf[len] es c
+                            len es len mas 1
+                            c es leer_byte()
+                        listo
+                        h es buf[0] por 256 mas buf[1]
+                        vname[vcnt] es h
+                        vcnt es vcnt mas 1
+                        voff[vcnt menos 1] es 0 menos (vcnt por 8)
+                    listo
+                listo
+
+                ; Check "devuelvase"
+                si matched es_igual 0 y len es_igual 10 y c es_mayor 0 entonces
+                    si is_devuelvase(buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9]) es_igual 1 entonces
+                        matched es 1
+                        mientras is_ws(c) es_igual 1 haga
+                            c es leer_byte()
+                        listo
+                        si is_digit(c) es_igual 1 entonces
+                            val es 0
+                            mientras is_digit(c) es_igual 1 haga
+                                val es val por 10 mas (c menos 48)
+                                c es leer_byte()
+                            listo
+                            ; mov rax, imm
+                            code[pos] es 0x48
+                            pos es pos mas 1
+                            code[pos] es 0xB8
+                            pos es pos mas 1
+                            v es val
+                            code[pos] es v menos ((v entre 256) por 256)
+                            pos es pos mas 1
+                            v es v entre 256
+                            code[pos] es v menos ((v entre 256) por 256)
+                            pos es pos mas 1
+                            v es v entre 256
+                            code[pos] es v menos ((v entre 256) por 256)
+                            pos es pos mas 1
+                            v es v entre 256
+                            code[pos] es v
+                            pos es pos mas 1
+                            code[pos] es 0
+                            pos es pos mas 1
+                            code[pos] es 0
+                            pos es pos mas 1
+                            code[pos] es 0
+                            pos es pos mas 1
+                            code[pos] es 0
+                            pos es pos mas 1
+                        sino
+                            si is_alpha(c) es_igual 1 entonces
+                                len es 0
+                                mientras is_alnum(c) es_igual 1 y len es_menor 15 haga
+                                    buf[len] es c
+                                    len es len mas 1
+                                    c es leer_byte()
+                                listo
+                                h es buf[0] por 256 mas buf[1]
+                                off es 0
+                                i es 0
+                                mientras i es_menor vcnt haga
+                                    si vname[i] es_igual h entonces
+                                        off es voff[i]
+                                    listo
+                                    i es i mas 1
+                                listo
+                                ; mov rax, [rbp+off]
+                                code[pos] es 0x48
+                                pos es pos mas 1
+                                code[pos] es 0x8B
+                                pos es pos mas 1
+                                code[pos] es 0x45
+                                pos es pos mas 1
+                                code[pos] es off mas 256
+                                pos es pos mas 1
+                            listo
+                        listo
+                    listo
+                listo
+
+                ; Check assignment
+                si matched es_igual 0 y c es_mayor 0 entonces
+                    mientras is_ws(c) es_igual 1 haga
+                        c es leer_byte()
+                    listo
+                    si c es_igual 101 entonces
+                        n2 es leer_byte()
+                        si n2 es_igual 115 entonces
+                            matched es 1
+                            c es leer_byte()
+                            mientras is_ws(c) es_igual 1 haga
+                                c es leer_byte()
+                            listo
+                            h es buf[0] por 256 mas buf[1]
+                            off es 0
+                            i es 0
+                            mientras i es_menor vcnt haga
+                                si vname[i] es_igual h entonces
+                                    off es voff[i]
+                                listo
+                                i es i mas 1
+                            listo
+                            si is_digit(c) es_igual 1 entonces
+                                val es 0
+                                mientras is_digit(c) es_igual 1 haga
+                                    val es val por 10 mas (c menos 48)
+                                    c es leer_byte()
+                                listo
+                                ; mov rax, imm
+                                code[pos] es 0x48
+                                pos es pos mas 1
+                                code[pos] es 0xB8
+                                pos es pos mas 1
+                                v es val
+                                code[pos] es v menos ((v entre 256) por 256)
+                                pos es pos mas 1
+                                v es v entre 256
+                                code[pos] es v menos ((v entre 256) por 256)
+                                pos es pos mas 1
+                                v es v entre 256
+                                code[pos] es v menos ((v entre 256) por 256)
+                                pos es pos mas 1
+                                v es v entre 256
+                                code[pos] es v
+                                pos es pos mas 1
+                                code[pos] es 0
+                                pos es pos mas 1
+                                code[pos] es 0
+                                pos es pos mas 1
+                                code[pos] es 0
+                                pos es pos mas 1
+                                code[pos] es 0
+                                pos es pos mas 1
+                            listo
+                            ; mov [rbp+off], rax
+                            code[pos] es 0x48
+                            pos es pos mas 1
+                            code[pos] es 0x89
+                            pos es pos mas 1
+                            code[pos] es 0x45
+                            pos es pos mas 1
+                            code[pos] es off mas 256
+                            pos es pos mas 1
+                        sino
+                            c es n2
+                        listo
+                    listo
+                listo
+            sino
+                c es leer_byte()
+            listo
+        listo
+    listo
+
+    ; Epilogue
+    code[pos] es 0x48
+    pos es pos mas 1
+    code[pos] es 0x89
+    pos es pos mas 1
+    code[pos] es 0xEC
+    pos es pos mas 1
+    code[pos] es 0x5D
+    pos es pos mas 1
+    code[pos] es 0x48
+    pos es pos mas 1
+    code[pos] es 0x89
+    pos es pos mas 1
+    code[pos] es 0xC7
+    pos es pos mas 1
+    code[pos] es 0xB8
+    pos es pos mas 1
+    code[pos] es 0x3C
+    pos es pos mas 1
+    code[pos] es 0x00
+    pos es pos mas 1
+    code[pos] es 0x00
+    pos es pos mas 1
+    code[pos] es 0x00
+    pos es pos mas 1
+    code[pos] es 0x0F
+    pos es pos mas 1
+    code[pos] es 0x05
+    pos es pos mas 1
+
+    ; Flush
+    i es 0
+    mientras i es_menor pos haga
+        d es escribir_byte(code[i])
+        i es i mas 1
+    listo
+
+    devuelvase 0
+fin parcero
