@@ -839,8 +839,13 @@ gen_diga:
     jmp     .done
 
 .print_string:
-    ; String literal - get pointer and length
+    ; Check if it's a literal or variable
     mov     rdi, [r12 + AST_DIGA_VAL]
+    movzx   eax, byte [rdi]
+    cmp     al, AST_TEXTO_LIT
+    jne     .print_string_var
+
+    ; String literal - get pointer and length
     mov     rbx, [rdi + AST_LIT_VAL]    ; Interned string pointer
 
     ; Add string to data section and get offset
@@ -876,6 +881,13 @@ gen_diga:
 
     ; syscall
     call    emit_syscall
+    jmp     .done
+
+.print_string_var:
+    ; String variable - not fully supported in Stage 0
+    ; For now, just skip (Stage 0 only requires string literals per roadmap)
+    ; TODO: Implement runtime string printing for Stage 1
+    jmp     .done
 
 .done:
     pop     r12
