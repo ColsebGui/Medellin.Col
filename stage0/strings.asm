@@ -13,6 +13,7 @@ default rel
 extern util_strlen
 extern util_streq
 extern util_memcpy
+extern util_memcmp
 
 ; -----------------------------------------------------------------------------
 ; Constants
@@ -339,12 +340,12 @@ strings_intern_len:
     test    rax, rax
     jz      .not_found
 
-    ; Compare strings
+    ; Compare strings (only compare length bytes, not null terminator
+    ; since input string from source buffer is not null-terminated)
     push    rbx
     mov     rdi, rax
     mov     rsi, r12
     mov     rdx, r13
-    inc     rdx                         ; Include null terminator
     call    util_memcmp
     pop     rbx
     test    rax, rax

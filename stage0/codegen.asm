@@ -17,6 +17,7 @@ extern symbols_enter_scope
 extern symbols_leave_scope
 extern symbols_define
 extern util_strlen
+extern strings_intern
 
 ; Symbol constants
 %define SYM_VARIABLE    1
@@ -128,6 +129,8 @@ global code_buffer
 global code_size
 global data_buffer
 global data_size
+global data_relocs
+global data_relocs_count
 
 ; Function info for linking
 global func_table
@@ -140,6 +143,8 @@ section .data
     ; Runtime function names
     rt_diga:            db "_medellin_diga", 0
     rt_diga_numero:     db "_medellin_diga_numero", 0
+    ; Main function name
+    str_principal:      db "principal", 0
 
 section .bss
     ; Code buffer (4MB)
@@ -167,6 +172,18 @@ section .bss
     ; For loops - track variable offsets
     loop_var_offset:    resq 1
     loop_end_offset:    resq 1
+
+    ; Data relocations (code_offset, data_offset) pairs
+    ; code_offset = offset within code_buffer where to patch
+    ; data_offset = offset within data_buffer of the target
+    data_relocs:        resq 2048       ; 1024 relocations max
+    data_relocs_count:  resq 1
+
+    ; Call patches (code_offset, func_name) pairs
+    ; code_offset = where the call's rel32 operand is
+    ; func_name = interned string pointer for target function
+    call_patches:       resq 2048       ; 1024 calls max
+    call_patches_count: resq 1
 
 section .text
 
@@ -198,6 +215,18 @@ codegen_generate:
     mov     qword [data_size], 0
     mov     qword [func_count], 0
     mov     qword [label_counter], 0
+    mov     qword [data_relocs_count], 0
+    mov     qword [call_patches_count], 0
+
+    ; Intern "principal" for startup code
+    lea     rdi, [str_principal]
+    call    strings_intern
+    mov     r15, rax                    ; Save interned principal
+
+    ; Emit startup code (_start)
+    ; This calls principal() and exits with return value
+    mov     rdi, r15                    ; Pass interned principal name
+    call    emit_startup_code
 
     ; Generate code for each function
     mov     r13, [r12 + AST_PROGRAMA_FUNCS]
@@ -215,6 +244,9 @@ codegen_generate:
     jmp     .func_loop
 
 .done:
+    ; Patch all function calls to correct offsets
+    call    patch_calls
+
     ; Calculate final code size
     mov     rax, [code_ptr]
     lea     rcx, [code_buffer]
@@ -257,11 +289,13 @@ gen_parcero:
 
     mov     rcx, [func_count]
     lea     rdx, [func_table]
-    mov     [rdx + rcx * 16], rax       ; Name
+    shl     rcx, 4                      ; rcx * 16
+    add     rdx, rcx
+    mov     [rdx], rax                  ; Name
     mov     rax, [code_ptr]
     lea     rbx, [code_buffer]
     sub     rax, rbx
-    mov     [rdx + rcx * 16 + 8], rax   ; Offset
+    mov     [rdx + 8], rax              ; Offset
     inc     qword [func_count]
 
     ; Calculate stack size (8 bytes per local + alignment)
@@ -304,33 +338,39 @@ gen_parcero:
     mov     rax, [r13 + rbx * 8]        ; Parameter node
 
     ; Define in symbol table
-    push    rdi
-    push    rsi
+    push    rax                         ; Save param node
     mov     rdi, [rax + 16]             ; Name
     mov     rsi, SYM_PARAMETER
     xor     rdx, rdx
     xor     rcx, rcx
     call    symbols_define
-    pop     rsi
-    pop     rdi
+    ; rax now has symbol pointer
 
     ; Store parameter from register to stack
     ; Parameters come in rdi, rsi, rdx, rcx, r8, r9
     mov     rcx, rbx
     cmp     rcx, 6
-    jge     .param_done                 ; Only handle first 6 for now
+    jge     .param_done_pop             ; Only handle first 6 for now
 
     ; Calculate offset: -8, -16, -24, etc.
     inc     rcx
     neg     rcx
     shl     rcx, 3
 
+    ; Update symbol's offset so identifier access works
+    mov     [rax + SYM_OFFSET], rcx
+
     ; mov [rbp + offset], reg
     push    rbx
+    push    rax                         ; Save symbol ptr
     mov     rdi, rcx
     mov     rsi, rbx                    ; Param index = which register
     call    emit_store_param
+    pop     rax
     pop     rbx
+
+.param_done_pop:
+    pop     rax                         ; Discard saved param node
 
 .param_done:
     inc     rbx
@@ -810,19 +850,34 @@ gen_diga:
     call    add_string_to_data
     mov     r12, rax                    ; Data offset
 
-    ; lea rdi, [rel data_offset]
-    mov     rdi, r12
-    call    emit_lea_rdi_data
-
-    ; Calculate string length
+    ; Calculate string length first (before we clobber rbx)
     mov     rdi, rbx
     call    util_strlen
-    mov     rdi, rax
-    call    emit_mov_rsi_imm
+    push    rax                         ; Save length
 
-    ; Call _medellin_diga
-    lea     rdi, [rt_diga]
-    call    emit_call_extern
+    ; Emit inline write syscall:
+    ; rdi = 1 (stdout), rsi = buffer, rdx = length, rax = 1 (sys_write)
+
+    ; lea rsi, [rel data_offset] - load string address into rsi
+    ; We'll use emit_lea_rdi_data then move to rsi
+    mov     rdi, r12
+    call    emit_lea_rdi_data           ; lea rdi, [rel string]
+    call    emit_mov_rsi_rdi            ; mov rsi, rdi
+
+    ; mov rdx, length
+    pop     rdi                         ; Restore length
+    call    emit_mov_rdx_imm            ; mov rdx, length
+
+    ; mov rdi, 1 (stdout)
+    mov     rdi, 1
+    call    emit_mov_rdi_imm            ; mov rdi, 1
+
+    ; mov eax, 1 (sys_write)
+    mov     rdi, 1
+    call    emit_mov_eax_imm            ; mov eax, 1
+
+    ; syscall
+    call    emit_syscall
 
 .done:
     pop     r12
@@ -1479,6 +1534,50 @@ emit_mov_rsi_imm:
     pop     rdi
     jmp     emit_qword
 
+; mov rdi, imm64 = 48 BF imm64
+emit_mov_rdi_imm:
+    push    rdi
+    mov     dil, 0x48
+    call    emit_byte
+    mov     dil, 0xBF
+    call    emit_byte
+    pop     rdi
+    jmp     emit_qword
+
+; mov rdx, imm64 = 48 BA imm64
+emit_mov_rdx_imm:
+    push    rdi
+    mov     dil, 0x48
+    call    emit_byte
+    mov     dil, 0xBA
+    call    emit_byte
+    pop     rdi
+    jmp     emit_qword
+
+; mov eax, imm32 = B8 imm32
+emit_mov_eax_imm:
+    push    rdi
+    mov     dil, 0xB8
+    call    emit_byte
+    pop     rdi
+    jmp     emit_dword
+
+; mov rsi, rdi = 48 89 FE
+emit_mov_rsi_rdi:
+    mov     dil, 0x48
+    call    emit_byte
+    mov     dil, 0x89
+    call    emit_byte
+    mov     dil, 0xFE
+    jmp     emit_byte
+
+; syscall = 0F 05
+emit_syscall:
+    mov     dil, 0x0F
+    call    emit_byte
+    mov     dil, 0x05
+    jmp     emit_byte
+
 ; xchg rax, rcx = 48 91
 emit_xchg_rax_rcx:
     mov     dil, 0x48
@@ -1658,100 +1757,156 @@ emit_movzx_rax_al:
 ; mov [rbp + off8], rax = 48 89 45 xx (if off fits in byte)
 ; mov [rbp + off32], rax = 48 89 85 xxxxxxxx
 emit_store_rax_to_stack:
-    push    rdi
+    push    rbx
+    mov     rbx, rdi                    ; Save offset in callee-saved register
+
     mov     dil, 0x48
     call    emit_byte
     mov     dil, 0x89
     call    emit_byte
-    pop     rdi
 
     ; Check if offset fits in signed byte
-    movsx   rax, dil
-    cmp     rax, rdi
+    movsx   rax, bl
+    cmp     rax, rbx
     jne     .use_dword
 
     mov     dil, 0x45                   ; [rbp + disp8]
     call    emit_byte
-    pop     rdi
-    push    rdi
+    mov     dil, bl                     ; Emit offset as byte
+    pop     rbx
     jmp     emit_byte
 
 .use_dword:
-    push    rdi
     mov     dil, 0x85                   ; [rbp + disp32]
     call    emit_byte
-    pop     rdi
+    mov     rdi, rbx                    ; Offset for dword emit
+    pop     rbx
     jmp     emit_dword
 
 ; Load rax from [rbp + offset]
 emit_load_rax_from_stack:
-    push    rdi
+    push    rbx
+    mov     rbx, rdi                    ; Save offset in callee-saved register
+
     mov     dil, 0x48
     call    emit_byte
     mov     dil, 0x8B
     call    emit_byte
-    pop     rdi
 
-    movsx   rax, dil
-    cmp     rax, rdi
+    ; Check if offset fits in signed byte
+    movsx   rax, bl
+    cmp     rax, rbx
     jne     .use_dword
 
-    push    rdi
-    mov     dil, 0x45
+    mov     dil, 0x45                   ; [rbp + disp8]
     call    emit_byte
-    pop     rdi
+    mov     dil, bl                     ; Emit offset as byte
+    pop     rbx
     jmp     emit_byte
 
 .use_dword:
-    push    rdi
-    mov     dil, 0x85
+    mov     dil, 0x85                   ; [rbp + disp32]
     call    emit_byte
-    pop     rdi
+    mov     rdi, rbx                    ; Offset for dword emit
+    pop     rbx
     jmp     emit_dword
 
 ; Load rcx from [rbp + offset]
 emit_load_rcx_from_stack:
-    push    rdi
+    push    rbx
+    mov     rbx, rdi                    ; Save offset in callee-saved register
+
     mov     dil, 0x48
     call    emit_byte
     mov     dil, 0x8B
     call    emit_byte
-    pop     rdi
 
-    movsx   rax, dil
-    cmp     rax, rdi
+    ; Check if offset fits in signed byte
+    movsx   rax, bl
+    cmp     rax, rbx
     jne     .use_dword
 
-    push    rdi
-    mov     dil, 0x4D                   ; rcx instead of rax
+    mov     dil, 0x4D                   ; [rbp + disp8] with rcx
     call    emit_byte
-    pop     rdi
+    mov     dil, bl                     ; Emit offset as byte
+    pop     rbx
     jmp     emit_byte
 
 .use_dword:
-    push    rdi
-    mov     dil, 0x8D
+    mov     dil, 0x8D                   ; [rbp + disp32] with rcx
     call    emit_byte
-    pop     rdi
+    mov     rdi, rbx                    ; Offset for dword emit
+    pop     rbx
     jmp     emit_dword
 
 ; Store parameter register to stack
-; rsi = param index (0=rdi, 1=rsi, etc.)
+; rdi = offset (negative)
+; rsi = param index (0=rdi, 1=rsi, 2=rdx, 3=rcx, 4=r8, 5=r9)
 emit_store_param:
-    ; For simplicity, just store rdi (first param) for now
-    ; mov [rbp + rdi], rdi
-    push    rdi
-    push    rsi
+    push    rbx
+    push    r12
+    mov     rbx, rdi                    ; Save offset
+    mov     r12, rsi                    ; Save param index
+
+    ; REX prefix - 0x48 for rdi/rsi/rdx/rcx, 0x4C for r8/r9
+    cmp     r12, 4
+    jge     .rex_extended
     mov     dil, 0x48
+    jmp     .emit_rex
+.rex_extended:
+    mov     dil, 0x4C                   ; REX.W + REX.R
+.emit_rex:
     call    emit_byte
+
+    ; Opcode 0x89 (mov r/m64, r64)
     mov     dil, 0x89
     call    emit_byte
-    mov     dil, 0x7D                   ; rdi to [rbp+disp8]
+
+    ; ModRM byte: mod=01 (disp8), r/m=101 (rbp)
+    ; reg field: rdi=7, rsi=6, rdx=2, rcx=1, r8=0, r9=1
+    cmp     r12, 0
+    je      .modrm_rdi
+    cmp     r12, 1
+    je      .modrm_rsi
+    cmp     r12, 2
+    je      .modrm_rdx
+    cmp     r12, 3
+    je      .modrm_rcx
+    cmp     r12, 4
+    je      .modrm_r8
+    cmp     r12, 5
+    je      .modrm_r9
+    jmp     .modrm_done                 ; Invalid index
+
+.modrm_rdi:
+    mov     dil, 0x7D                   ; 01 111 101
+    jmp     .modrm_emit
+.modrm_rsi:
+    mov     dil, 0x75                   ; 01 110 101
+    jmp     .modrm_emit
+.modrm_rdx:
+    mov     dil, 0x55                   ; 01 010 101
+    jmp     .modrm_emit
+.modrm_rcx:
+    mov     dil, 0x4D                   ; 01 001 101
+    jmp     .modrm_emit
+.modrm_r8:
+    mov     dil, 0x45                   ; 01 000 101
+    jmp     .modrm_emit
+.modrm_r9:
+    mov     dil, 0x4D                   ; 01 001 101
+
+.modrm_emit:
     call    emit_byte
-    pop     rsi
-    pop     rdi
+
     ; Emit offset as byte
-    jmp     emit_byte
+    mov     rdi, rbx
+    call    emit_byte
+
+.modrm_done:
+    pop     r12
+    pop     rbx
+    ret
 
 ; jz rel32 - emit jump and return patch location
 emit_jz_forward:
@@ -1811,28 +1966,76 @@ emit_jmp_back:
     jmp     emit_dword
 
 ; lea rdi, [rel data_offset]
+; Input: rdi = data offset (within data_buffer)
+; Records relocation for later fixup
 emit_lea_rdi_data:
-    push    rdi
+    push    rbx
+    push    r12
+    mov     r12, rdi                    ; Save data offset
+
+    ; Emit opcode bytes (3 bytes)
     mov     dil, 0x48
     call    emit_byte
     mov     dil, 0x8D
     call    emit_byte
     mov     dil, 0x3D
     call    emit_byte
-    pop     rdi
-    jmp     emit_dword
+
+    ; Record relocation: code_offset (where the 4-byte offset will be)
+    mov     rax, [code_ptr]
+    lea     rbx, [code_buffer]
+    sub     rax, rbx                    ; Current code offset
+
+    mov     rcx, [data_relocs_count]
+    lea     rdx, [data_relocs]
+    shl     rcx, 4                      ; * 16 (two qwords per entry)
+    mov     [rdx + rcx], rax            ; code_offset
+    mov     [rdx + rcx + 8], r12        ; data_offset
+    inc     qword [data_relocs_count]
+
+    ; Emit placeholder offset (will be patched later)
+    xor     edi, edi
+    call    emit_dword
+
+    pop     r12
+    pop     rbx
+    ret
 
 ; lea rax, [rel data_offset]
+; Input: rdi = data offset (within data_buffer)
+; Records relocation for later fixup
 emit_lea_rax_data:
-    push    rdi
+    push    rbx
+    push    r12
+    mov     r12, rdi                    ; Save data offset
+
+    ; Emit opcode bytes (3 bytes)
     mov     dil, 0x48
     call    emit_byte
     mov     dil, 0x8D
     call    emit_byte
     mov     dil, 0x05
     call    emit_byte
-    pop     rdi
-    jmp     emit_dword
+
+    ; Record relocation
+    mov     rax, [code_ptr]
+    lea     rbx, [code_buffer]
+    sub     rax, rbx                    ; Current code offset
+
+    mov     rcx, [data_relocs_count]
+    lea     rdx, [data_relocs]
+    shl     rcx, 4                      ; * 16
+    mov     [rdx + rcx], rax            ; code_offset
+    mov     [rdx + rcx + 8], r12        ; data_offset
+    inc     qword [data_relocs_count]
+
+    ; Emit placeholder offset
+    xor     edi, edi
+    call    emit_dword
+
+    pop     r12
+    pop     rbx
+    ret
 
 ; call extern (placeholder - needs linking)
 emit_call_extern:
@@ -1844,14 +2047,168 @@ emit_call_extern:
     pop     rdi
     ret
 
+; -----------------------------------------------------------------------------
+; patch_calls - Resolve all function call addresses
+; -----------------------------------------------------------------------------
+; After all code is generated, patches call instructions with correct offsets
+patch_calls:
+    push    rbp
+    mov     rbp, rsp
+    push    rbx
+    push    r12
+    push    r13
+    push    r14
+    push    r15
+
+    mov     r14, [call_patches_count]
+    test    r14, r14
+    jz      .patch_done
+
+    xor     r13, r13                    ; Patch index
+.patch_loop:
+    cmp     r13, r14
+    jge     .patch_done
+
+    ; Get patch entry
+    mov     rax, r13
+    shl     rax, 4                      ; * 16
+    lea     rcx, [call_patches]
+    mov     rbx, [rcx + rax]            ; code_offset (where rel32 is)
+    mov     r12, [rcx + rax + 8]        ; function name
+
+    ; Look up function in func_table
+    mov     r15, [func_count]
+    xor     rcx, rcx
+.func_search:
+    cmp     rcx, r15
+    jge     .patch_next                 ; Function not found, skip
+
+    lea     rdx, [func_table]
+    mov     rax, rcx
+    shl     rax, 4                      ; * 16
+    cmp     r12, [rdx + rax]            ; Compare name pointers
+    je      .func_found
+    inc     rcx
+    jmp     .func_search
+
+.func_found:
+    ; rax still has index * 16
+    lea     rdx, [func_table]
+    mov     rax, [rdx + rax + 8]        ; Get function offset
+
+    ; Calculate relative offset: target - (call_site + 4)
+    ; call_site = rbx, target = rax
+    mov     rcx, rbx
+    add     rcx, 4                      ; End of call instruction
+    sub     rax, rcx                    ; Relative offset
+
+    ; Write offset to code_buffer
+    lea     rdx, [code_buffer]
+    mov     [rdx + rbx], eax            ; Write 32-bit relative offset
+
+.patch_next:
+    inc     r13
+    jmp     .patch_loop
+
+.patch_done:
+    pop     r15
+    pop     r14
+    pop     r13
+    pop     r12
+    pop     rbx
+    pop     rbp
+    ret
+
 ; call function by name
+; Input: rdi = function name (interned string)
 emit_call_func:
-    push    rdi
+    push    rbx
+    push    r12
+    mov     r12, rdi                    ; Save function name
+
     mov     dil, 0xE8
     call    emit_byte
+
+    ; Record patch location (where the rel32 starts)
+    mov     rax, [code_ptr]
+    lea     rbx, [code_buffer]
+    sub     rax, rbx                    ; code_offset
+    mov     rbx, [call_patches_count]
+    shl     rbx, 4                      ; * 16 (each entry is 2 qwords)
+    lea     rcx, [call_patches]
+    mov     [rcx + rbx], rax            ; Store code_offset
+    mov     [rcx + rbx + 8], r12        ; Store function name
+    inc     qword [call_patches_count]
+
     xor     edi, edi                    ; Placeholder
     call    emit_dword
-    pop     rdi
+
+    pop     r12
+    pop     rbx
+    ret
+
+; -----------------------------------------------------------------------------
+; emit_startup_code - Emit program entry point
+; -----------------------------------------------------------------------------
+; Input: rdi = interned "principal" name pointer
+; Emits:
+;   xor rbp, rbp          ; Clear frame pointer
+;   and rsp, -16          ; Align stack
+;   call principal        ; Call main (will be patched)
+;   mov rdi, rax          ; Exit code = return value
+;   mov eax, 60           ; sys_exit
+;   syscall
+; -----------------------------------------------------------------------------
+emit_startup_code:
+    push    rbp
+    mov     rbp, rsp
+    push    rbx
+    mov     rbx, rdi                    ; Save principal name
+
+    ; xor rbp, rbp = 48 31 ED
+    mov     dil, 0x48
+    call    emit_byte
+    mov     dil, 0x31
+    call    emit_byte
+    mov     dil, 0xED
+    call    emit_byte
+
+    ; and rsp, -16 = 48 83 E4 F0
+    mov     dil, 0x48
+    call    emit_byte
+    mov     dil, 0x83
+    call    emit_byte
+    mov     dil, 0xE4
+    call    emit_byte
+    mov     dil, 0xF0
+    call    emit_byte
+
+    ; call principal - use emit_call_func to record patch
+    mov     rdi, rbx                    ; principal name
+    call    emit_call_func
+
+    ; mov rdi, rax = 48 89 C7
+    mov     dil, 0x48
+    call    emit_byte
+    mov     dil, 0x89
+    call    emit_byte
+    mov     dil, 0xC7
+    call    emit_byte
+
+    ; mov eax, 60 = B8 3C 00 00 00
+    mov     dil, 0xB8
+    call    emit_byte
+    mov     edi, 60
+    call    emit_dword
+
+    ; syscall = 0F 05
+    mov     dil, 0x0F
+    call    emit_byte
+    mov     dil, 0x05
+    call    emit_byte
+
+    pop     rbx
+    pop     rbp
     ret
 
 ; =============================================================================

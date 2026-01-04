@@ -1,23 +1,23 @@
 ; =============================================================================
 ; MEDELLIN.COL - STAGE 0: ERROR HANDLING
 ; =============================================================================
-; Compiler error reporting
+; Compiler error reporting (self-contained, no runtime deps)
 ; =============================================================================
 
 bits 64
 default rel
 
 ; -----------------------------------------------------------------------------
-; External dependencies
+; System calls
 ; -----------------------------------------------------------------------------
-extern _medellin_escribir
-extern _medellin_salir
-extern util_int_to_str
+%define SYS_WRITE       1
+%define SYS_EXIT        60
+%define STDERR          2
 
 ; -----------------------------------------------------------------------------
-; Constants
+; External dependencies
 ; -----------------------------------------------------------------------------
-%define STDERR 2
+extern util_int_to_str
 
 ; -----------------------------------------------------------------------------
 ; Exports
@@ -39,47 +39,69 @@ global error_file
 ; -----------------------------------------------------------------------------
 section .data
     ; Error state
-    error_line:     dq 0
-    error_column:   dq 0
+    error_line:     dq 1
+    error_column:   dq 1
     error_file:     dq 0            ; Pointer to filename
     error_count_v:  dq 0
 
     ; Message prefixes
-    msg_error:      db "ERROR", 0
+    msg_error:      db "ERROR"
     msg_error_len   equ 5
 
-    msg_at:         db " en ", 0
+    msg_at:         db " en "
     msg_at_len      equ 4
 
-    msg_line:       db " linea ", 0
-    msg_line_len    equ 7
+    msg_line:       db "linea "
+    msg_line_len    equ 6
 
-    msg_col:        db ", columna ", 0
+    msg_col:        db ", columna "
     msg_col_len     equ 10
 
-    msg_colon:      db ": ", 0
+    msg_colon:      db ": "
     msg_colon_len   equ 2
 
     newline:        db 10
-
-    ; Common error messages
-    err_unexpected_char:    db "Caracter inesperado", 0
-    err_unexpected_token:   db "Token inesperado", 0
-    err_expected_token:     db "Se esperaba token", 0
-    err_undefined_var:      db "Variable no definida", 0
-    err_undefined_func:     db "Funcion no definida", 0
-    err_type_mismatch:      db "Tipos incompatibles", 0
-    err_redefinition:       db "Redefinicion no permitida", 0
-    err_not_callable:       db "No es invocable", 0
-    err_wrong_args:         db "Numero incorrecto de argumentos", 0
-    err_file_not_found:     db "Archivo no encontrado", 0
-    err_out_of_memory:      db "Sin memoria", 0
 
 section .bss
     ; Buffer for number formatting
     num_buffer:     resb 32
 
 section .text
+
+; -----------------------------------------------------------------------------
+; write_stderr - Write to stderr
+; -----------------------------------------------------------------------------
+; Input:  rdi = buffer
+;         rsi = length
+; -----------------------------------------------------------------------------
+write_stderr:
+    push    rax
+    push    rcx
+    push    r11
+    push    rdi
+    push    rsi
+
+    mov     rdx, rsi                ; length
+    mov     rsi, rdi                ; buffer
+    mov     rdi, STDERR             ; fd
+    mov     rax, SYS_WRITE
+    syscall
+
+    pop     rsi
+    pop     rdi
+    pop     r11
+    pop     rcx
+    pop     rax
+    ret
+
+; -----------------------------------------------------------------------------
+; exit_program - Exit with code
+; -----------------------------------------------------------------------------
+; Input:  rdi = exit code
+; -----------------------------------------------------------------------------
+exit_program:
+    mov     rax, SYS_EXIT
+    syscall
 
 ; -----------------------------------------------------------------------------
 ; error_init - Initialize error system
@@ -100,84 +122,97 @@ error_report:
     push    rbp
     mov     rbp, rsp
     push    rbx
+    push    r12
 
     mov     rbx, rdi                    ; Save message
 
     ; Print "ERROR"
-    mov     rdi, STDERR
-    lea     rsi, [msg_error]
-    mov     rdx, msg_error_len
-    call    _medellin_escribir
+    lea     rdi, [msg_error]
+    mov     rsi, msg_error_len
+    call    write_stderr
 
     ; Print " en "
-    mov     rdi, STDERR
-    lea     rsi, [msg_at]
-    mov     rdx, msg_at_len
-    call    _medellin_escribir
+    lea     rdi, [msg_at]
+    mov     rsi, msg_at_len
+    call    write_stderr
 
-    ; Print filename if set
-    mov     rax, [error_file]
-    test    rax, rax
-    jz      .no_file
-
-    ; TODO: print filename
-
-.no_file:
-    ; Print " linea "
-    mov     rdi, STDERR
-    lea     rsi, [msg_line]
-    mov     rdx, msg_line_len
-    call    _medellin_escribir
+    ; Print "linea "
+    lea     rdi, [msg_line]
+    mov     rsi, msg_line_len
+    call    write_stderr
 
     ; Print line number
     mov     rdi, [error_line]
     lea     rsi, [num_buffer]
     mov     rdx, 32
     call    util_int_to_str
-    mov     rdx, rax                    ; Length
+    mov     r12, rax                    ; Length
 
-    mov     rdi, STDERR
-    lea     rsi, [num_buffer]
-    call    _medellin_escribir
+    lea     rdi, [num_buffer]
+    mov     rsi, r12
+    call    write_stderr
 
     ; Print ", columna "
-    mov     rdi, STDERR
-    lea     rsi, [msg_col]
-    mov     rdx, msg_col_len
-    call    _medellin_escribir
+    lea     rdi, [msg_col]
+    mov     rsi, msg_col_len
+    call    write_stderr
 
     ; Print column number
     mov     rdi, [error_column]
     lea     rsi, [num_buffer]
     mov     rdx, 32
     call    util_int_to_str
-    mov     rdx, rax
+    mov     r12, rax
 
-    mov     rdi, STDERR
-    lea     rsi, [num_buffer]
-    call    _medellin_escribir
+    lea     rdi, [num_buffer]
+    mov     rsi, r12
+    call    write_stderr
 
     ; Print ": "
-    mov     rdi, STDERR
-    lea     rsi, [msg_colon]
-    mov     rdx, msg_colon_len
-    call    _medellin_escribir
+    lea     rdi, [msg_colon]
+    mov     rsi, msg_colon_len
+    call    write_stderr
 
     ; Print error message
     mov     rdi, rbx
-    call    print_string
+    call    print_cstring
 
     ; Print newline
-    mov     rdi, STDERR
-    lea     rsi, [newline]
-    mov     rdx, 1
-    call    _medellin_escribir
+    lea     rdi, [newline]
+    mov     rsi, 1
+    call    write_stderr
 
     ; Increment error count
     inc     qword [error_count_v]
 
+    pop     r12
     pop     rbx
     pop     rbp
+    ret
+
+; -----------------------------------------------------------------------------
+; print_cstring - Print null-terminated string to stderr
+; -----------------------------------------------------------------------------
+; Input:  rdi = string
+; -----------------------------------------------------------------------------
+print_cstring:
+    push    rbx
+    mov     rbx, rdi
+
+    ; Get length
+    xor     rax, rax
+.len_loop:
+    cmp     byte [rbx + rax], 0
+    je      .print
+    inc     rax
+    jmp     .len_loop
+
+.print:
+    mov     rsi, rax                    ; Length
+    mov     rdi, rbx
+    call    write_stderr
+
+    pop     rbx
     ret
 
 ; -----------------------------------------------------------------------------
@@ -186,7 +221,6 @@ error_report:
 ; Input:  rdi = error message
 ;         rsi = line number
 ;         rdx = column number
-; Output: none
 ; -----------------------------------------------------------------------------
 error_report_at:
     push    rbp
@@ -212,7 +246,7 @@ error_fatal:
     call    error_report
 
     mov     rdi, 1                      ; Exit code 1
-    call    _medellin_salir
+    call    exit_program
 
 ; -----------------------------------------------------------------------------
 ; error_has_errors - Check if any errors occurred
@@ -233,37 +267,6 @@ error_has_errors:
 ; -----------------------------------------------------------------------------
 error_count:
     mov     rax, [error_count_v]
-    ret
-
-; -----------------------------------------------------------------------------
-; print_string - Print null-terminated string to stderr
-; -----------------------------------------------------------------------------
-; Input:  rdi = string
-; Output: none
-; -----------------------------------------------------------------------------
-print_string:
-    push    rbp
-    mov     rbp, rsp
-    push    rbx
-
-    mov     rbx, rdi
-
-    ; Get length
-    xor     rax, rax
-.len_loop:
-    cmp     byte [rbx + rax], 0
-    je      .print
-    inc     rax
-    jmp     .len_loop
-
-.print:
-    mov     rdx, rax                    ; Length
-    mov     rdi, STDERR
-    mov     rsi, rbx
-    call    _medellin_escribir
-
-    pop     rbx
-    pop     rbp
     ret
 
 ; =============================================================================

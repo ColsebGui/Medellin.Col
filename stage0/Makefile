@@ -35,14 +35,10 @@ RUNTIME = ../runtime/linux_x86_64/libmedellin_rt.a
 
 all: $(COMPILER)
 
-# Build compiler
-$(COMPILER): $(OBJECTS) $(RUNTIME)
-	$(LD) $(LD_FLAGS) -o $@ $(OBJECTS) $(RUNTIME)
+# Build compiler (self-contained, no runtime dependency)
+$(COMPILER): $(OBJECTS)
+	$(LD) $(LD_FLAGS) -o $@ $(OBJECTS)
 	@echo "Stage 0 compiler built: $@"
-
-# Build runtime first
-$(RUNTIME):
-	$(MAKE) -C ../runtime/linux_x86_64/
 
 # Compile assembly files
 %.o: %.asm

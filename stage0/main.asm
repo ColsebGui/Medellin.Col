@@ -35,6 +35,8 @@ default rel
 ; -----------------------------------------------------------------------------
 ; External dependencies
 ; -----------------------------------------------------------------------------
+extern strings_init
+extern error_init
 extern lexer_init
 extern parser_parse
 extern types_check
@@ -185,6 +187,10 @@ _start:
     mov     rdi, [input_fd]
     mov     rax, SYS_CLOSE
     syscall
+
+    ; Initialize subsystems
+    call    strings_init
+    call    error_init
 
     ; Print lexing message
     mov     rdi, STDOUT

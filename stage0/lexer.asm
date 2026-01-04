@@ -112,12 +112,14 @@ section .data
         dq kw_fin,          3,  TOKEN_KW_FIN
         dq kw_si,           2,  TOKEN_KW_SI
         dq kw_entonces,     8,  TOKEN_KW_ENTONCES
+        dq kw_sino,         4,  TOKEN_KW_SINO
         dq kw_listo,        5,  TOKEN_KW_LISTO
         dq kw_mientras,     8,  TOKEN_KW_MIENTRAS
         dq kw_haga,         4,  TOKEN_KW_HAGA
         dq kw_desde,        5,  TOKEN_KW_DESDE
         dq kw_siendo,       6,  TOKEN_KW_SIENDO
         dq kw_hasta,        5,  TOKEN_KW_HASTA
+        dq kw_devuelvase,  10,  TOKEN_KW_DEVUELVASE
         dq kw_con,          3,  TOKEN_KW_CON
         dq kw_diga,         4,  TOKEN_KW_DIGA
         dq kw_numero,       6,  TOKEN_KW_NUMERO
@@ -138,6 +140,11 @@ section .data
         dq kw_y,            1,  TOKEN_Y
         dq kw_o,            1,  TOKEN_O
         dq kw_no,           2,  TOKEN_NO
+        dq kw_es_igual,     8,  TOKEN_IGUAL
+        dq kw_es_mayor,     8,  TOKEN_MAYOR
+        dq kw_es_menor,     8,  TOKEN_MENOR
+        dq kw_mayor_igual,  11, TOKEN_MAYOR_IGUAL
+        dq kw_menor_igual,  11, TOKEN_MENOR_IGUAL
         dq 0, 0, 0          ; End marker
 
     ; Keyword strings
@@ -145,12 +152,14 @@ section .data
     kw_fin:         db "fin", 0
     kw_si:          db "si", 0
     kw_entonces:    db "entonces", 0
+    kw_sino:        db "sino", 0
     kw_listo:       db "listo", 0
     kw_mientras:    db "mientras", 0
     kw_haga:        db "haga", 0
     kw_desde:       db "desde", 0
     kw_siendo:      db "siendo", 0
     kw_hasta:       db "hasta", 0
+    kw_devuelvase:  db "devuelvase", 0
     kw_con:         db "con", 0
     kw_diga:        db "diga", 0
     kw_numero:      db "numero", 0
@@ -171,6 +180,11 @@ section .data
     kw_y:           db "y", 0
     kw_o:           db "o", 0
     kw_no:          db "no", 0
+    kw_es_igual:    db "es_igual", 0
+    kw_es_mayor:    db "es_mayor", 0
+    kw_es_menor:    db "es_menor", 0
+    kw_mayor_igual: db "mayor_igual", 0
+    kw_menor_igual: db "menor_igual", 0
 
     ; Error messages
     err_unexpected_char:    db "Caracter inesperado", 0
