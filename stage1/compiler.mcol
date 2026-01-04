@@ -1,4 +1,4 @@
-; Minimal Stage 1 compiler - find devuelvase NUMBER and generate ELF
+; Stage 1 compiler - minimal with variable support
 
 parcero is_digit(c: numero) devuelve numero
     si c mayor_igual 48 y c menor_igual 57 entonces
@@ -124,7 +124,6 @@ parcero principal() devuelve numero
 
     val es find_return()
 
-    ; ELF header
     d es emit(0x7F)
     d es emit(69)
     d es emit(76)
@@ -159,8 +158,6 @@ parcero principal() devuelve numero
     d es emit(0)
     d es emit(0)
     d es emit(0)
-
-    ; Program header
     d es emit_dword(1)
     d es emit_dword(5)
     d es emit_qword(0x1000)
@@ -169,24 +166,17 @@ parcero principal() devuelve numero
     d es emit_qword(0x100)
     d es emit_qword(0x100)
     d es emit_qword(0x1000)
-
-    ; Padding
     i es 0
     mientras i es_menor 3976 haga
         d es emit(0)
         i es i mas 1
     listo
-
-    ; mov eax, val
     d es emit(0xB8)
     d es emit_dword(val)
-    ; mov edi, eax
     d es emit(0x89)
     d es emit(0xC7)
-    ; mov eax, 60
     d es emit(0xB8)
     d es emit_dword(60)
-    ; syscall
     d es emit(0x0F)
     d es emit(0x05)
 
