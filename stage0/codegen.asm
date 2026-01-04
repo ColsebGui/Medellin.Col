@@ -591,12 +591,11 @@ gen_si:
     mov     rdi, r13
     inc     rdi
     call    emit_jmp_forward
-    mov     r13, rax                    ; Save patch location for end
+    push    rax                         ; Save patch location for end jmp
 
-    ; Patch else jump
+    ; Patch else jump to here (rbx has the jz patch location)
+    mov     rdi, rbx
     call    emit_patch_jump
-    push    rbx
-    mov     rbx, rax
 
     ; Generate else block
     call    symbols_enter_scope
@@ -605,9 +604,8 @@ gen_si:
     call    symbols_leave_scope
 
     ; Patch end jump
-    mov     rdi, r13
+    pop     rdi                         ; Get the jmp patch location
     call    emit_patch_jump
-    pop     rbx
     jmp     .done
 
 .no_else:
@@ -841,8 +839,13 @@ gen_diga:
     jmp     .done
 
 .print_string:
-    ; String literal - get pointer and length
+    ; Check if it's a literal or variable
     mov     rdi, [r12 + AST_DIGA_VAL]
+    movzx   eax, byte [rdi]
+    cmp     al, AST_TEXTO_LIT
+    jne     .print_string_var
+
+    ; String literal - get pointer and length
     mov     rbx, [rdi + AST_LIT_VAL]    ; Interned string pointer
 
     ; Add string to data section and get offset
@@ -878,6 +881,13 @@ gen_diga:
 
     ; syscall
     call    emit_syscall
+    jmp     .done
+
+.print_string_var:
+    ; String variable - not fully supported in Stage 0
+    ; For now, just skip (Stage 0 only requires string literals per roadmap)
+    ; TODO: Implement runtime string printing for Stage 1
+    jmp     .done
 
 .done:
     pop     r12
