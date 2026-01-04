@@ -19,6 +19,7 @@ extern symbols_lookup
 extern symbols_set_type
 extern symbols_get_type
 extern error_report
+extern util_strcmp
 
 ; Symbol kinds
 %define SYM_VARIABLE    1
@@ -185,6 +186,9 @@ section .data
     err_not_numeric:        db "Se esperaba tipo numerico", 0
     err_not_boolean:        db "Se esperaba tipo booleano", 0
     err_return_type:        db "Tipo de retorno incorrecto", 0
+    ; Built-in function names
+    builtin_leer_byte:      db "leer_byte", 0
+    builtin_escribir_byte:  db "escribir_byte", 0
 
 section .bss
     ; Error count
@@ -1156,11 +1160,47 @@ check_llamada:
     test    rax, rax
     jnz     .found
 
+    ; Check for built-in functions before reporting error
+    ; Get callee name again
+    mov     rdi, [rbx + AST_LLAMADA_CALLEE]
+    mov     rdi, [rdi + AST_IDENT_NAME]
+    push    rdi                         ; Save name pointer
+
+    ; Check for leer_byte
+    lea     rsi, [builtin_leer_byte]
+    call    util_strcmp
+    test    rax, rax
+    jz      .builtin_leer_byte
+
+    ; Check for escribir_byte
+    pop     rdi
+    push    rdi
+    lea     rsi, [builtin_escribir_byte]
+    call    util_strcmp
+    test    rax, rax
+    jz      .builtin_escribir_byte
+
+    ; Not a built-in, report error
+    pop     rdi                         ; Clean up stack
     lea     rdi, [err_undefined_func]
     call    error_report
     inc     qword [error_count]
     mov     qword [rbx + AST_TYPE_ID], TYPE_UNKNOWN
     jmp     .done
+
+.builtin_leer_byte:
+    pop     rdi                         ; Clean up stack
+    ; leer_byte() returns numero (the byte read or -1 for EOF)
+    mov     qword [rbx + AST_TYPE_ID], TYPE_NUMERO
+    ; Also check arguments (should be none)
+    jmp     .check_args
+
+.builtin_escribir_byte:
+    pop     rdi                         ; Clean up stack
+    ; escribir_byte(b) returns numero (1 on success, 0 on error)
+    mov     qword [rbx + AST_TYPE_ID], TYPE_NUMERO
+    ; Also check arguments (should be 1)
+    jmp     .check_args
 
 .found:
     mov     r12, rax                    ; Symbol
@@ -1170,6 +1210,7 @@ check_llamada:
     call    symbols_get_type
     mov     [rbx + AST_TYPE_ID], rax
 
+.check_args:
     ; Check arguments
     mov     r13, [rbx + AST_LLAMADA_ARGS]
     mov     r14, [rbx + AST_LLAMADA_COUNT]

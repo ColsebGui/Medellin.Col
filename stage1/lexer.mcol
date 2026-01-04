@@ -2,101 +2,172 @@
 ; MEDELLIN.COL - STAGE 1: LEXER
 ; =============================================================================
 ; Tokenizer for Medellin.Col source code
-; Uses arrays to simulate token buffer structure
+; Reads from stdin using leer_byte()
 ; =============================================================================
 
 ; Token types
-; TOKEN_EOF       es 0
-; TOKEN_NUMERO    es 1
-; TOKEN_TEXTO     es 2
-; TOKEN_IDENT     es 10
-; TOKEN_PARCERO   es 100
-; TOKEN_FIN       es 101
-; TOKEN_SI        es 102
-; ... (more token types)
+; TOKEN_EOF       = 0
+; TOKEN_NUMERO    = 1     (number literal)
+; TOKEN_IDENT     = 10
+; TOKEN_PARCERO   = 100
+; TOKEN_FIN       = 101
+; TOKEN_SI        = 102
+; TOKEN_ENTONCES  = 103
+; TOKEN_SINO      = 104
+; TOKEN_LISTO     = 105
+; TOKEN_MIENTRAS  = 106
+; TOKEN_HAGA      = 107
+; TOKEN_DEVUELVASE = 111
+; TOKEN_DEVUELVE  = 120
+; TOKEN_ES        = 117
+; TOKEN_NUMERO_KW = 118   (type keyword)
+; TOKEN_MAS       = 20
+; TOKEN_MENOS     = 21
+; TOKEN_POR       = 22
+; TOKEN_ENTRE     = 23
+; TOKEN_ES_IGUAL  = 30
+; TOKEN_PAREN_IZQ = 50
+; TOKEN_PAREN_DER = 51
 
-; Token structure offsets (each token is 32 bytes)
-; OFFSET_TYPE   es 0
-; OFFSET_VALUE  es 8
-; OFFSET_LINE   es 16
-; OFFSET_COL    es 24
-; TOKEN_SIZE    es 32
-
-; Global state - simulated with function-local statics for now
-; (In full implementation, these would be module globals)
+; -----------------------------------------------------------------------------
+; Character classification helpers
+; -----------------------------------------------------------------------------
 
 parcero lex_is_digit(c: numero) devuelve numero
-    ; Check if character is a digit (0-9)
-    si c mayor_igual 0x30 y c menor_igual 0x39 entonces
+    si c mayor_igual 48 y c menor_igual 57 entonces
         devuelvase 1
     listo
     devuelvase 0
 fin parcero
 
 parcero lex_is_alpha(c: numero) devuelve numero
-    ; Check if character is a letter (a-z, A-Z)
-    si c mayor_igual 0x41 y c menor_igual 0x5A entonces
+    si c mayor_igual 65 y c menor_igual 90 entonces
         devuelvase 1
     listo
-    si c mayor_igual 0x61 y c menor_igual 0x7A entonces
+    si c mayor_igual 97 y c menor_igual 122 entonces
+        devuelvase 1
+    listo
+    si c es_igual 95 entonces
         devuelvase 1
     listo
     devuelvase 0
 fin parcero
 
 parcero lex_is_alnum(c: numero) devuelve numero
-    ; Check if character is alphanumeric or underscore
     si lex_is_alpha(c) es_igual 1 entonces
         devuelvase 1
     listo
     si lex_is_digit(c) es_igual 1 entonces
         devuelvase 1
     listo
-    si c es_igual 0x5F entonces
-        ; Underscore _
-        devuelvase 1
-    listo
     devuelvase 0
 fin parcero
 
 parcero lex_is_whitespace(c: numero) devuelve numero
-    ; Check if character is whitespace
-    si c es_igual 0x20 entonces
+    si c es_igual 32 entonces
         devuelvase 1
     listo
-    si c es_igual 0x09 entonces
+    si c es_igual 9 entonces
         devuelvase 1
     listo
-    si c es_igual 0x0A entonces
+    si c es_igual 10 entonces
         devuelvase 1
     listo
-    si c es_igual 0x0D entonces
+    si c es_igual 13 entonces
         devuelvase 1
     listo
     devuelvase 0
 fin parcero
 
-; For testing - returns sum of helper function results
-parcero test_lexer_helpers() devuelve numero
+; -----------------------------------------------------------------------------
+; Simple keyword matching functions
+; Each returns the token type if matched, 0 otherwise
+; Using character codes directly:
+; 's'=115, 'i'=105, 'n'=110, 'o'=111, 'e'=101, 'f'=102
+; 'a'=97, 'r'=114, 'g'=103, 'l'=108, 't'=116
+; 'p'=112, 'c'=99, 'd'=100, 'v'=118, 'u'=117, 'm'=109, 'h'=104
+; -----------------------------------------------------------------------------
+
+; Match keyword with given characters and length
+; This approach uses simpler inline checks
+
+parcero test_char_helpers() devuelve numero
     numero result
     result es 0
 
     ; Test is_digit
-    result es result mas lex_is_digit(0x35)     ; '5' -> 1
-    result es result mas lex_is_digit(0x41)     ; 'A' -> 0
+    result es result mas lex_is_digit(53)     ; '5' -> 1
+    result es result mas lex_is_digit(65)     ; 'A' -> 0
 
     ; Test is_alpha
-    result es result mas lex_is_alpha(0x41)     ; 'A' -> 1
-    result es result mas lex_is_alpha(0x35)     ; '5' -> 0
+    result es result mas lex_is_alpha(65)     ; 'A' -> 1
+    result es result mas lex_is_alpha(53)     ; '5' -> 0
 
     ; Test is_whitespace
-    result es result mas lex_is_whitespace(0x20) ; ' ' -> 1
-    result es result mas lex_is_whitespace(0x41) ; 'A' -> 0
+    result es result mas lex_is_whitespace(32) ; ' ' -> 1
+    result es result mas lex_is_whitespace(65) ; 'A' -> 0
 
     ; Expected: 1 + 0 + 1 + 0 + 1 + 0 = 3
     devuelvase result
 fin parcero
 
+; Simple test: read a few bytes and return their sum
+parcero test_read_bytes() devuelve numero
+    numero a
+    numero b
+    numero c
+
+    a es leer_byte()
+    b es leer_byte()
+    c es leer_byte()
+
+    devuelvase a mas b mas c
+fin parcero
+
+; Test simple tokenization: count how many 'p' characters (ASCII 112)
+parcero count_letter_p() devuelve numero
+    numero c
+    numero count
+    count es 0
+
+    c es leer_byte()
+    mientras c es_mayor 0 haga
+        si c es_igual 112 entonces
+            count es count mas 1
+        listo
+        c es leer_byte()
+    listo
+
+    devuelvase count
+fin parcero
+
+; Test: count words (sequences of alphanumeric characters)
+parcero count_words() devuelve numero
+    numero c
+    numero count
+    numero in_word
+
+    count es 0
+    in_word es 0
+
+    c es leer_byte()
+    mientras c es_mayor 0 haga
+        si lex_is_alnum(c) es_igual 1 entonces
+            si in_word es_igual 0 entonces
+                count es count mas 1
+                in_word es 1
+            listo
+        sino
+            in_word es 0
+        listo
+        c es leer_byte()
+    listo
+
+    devuelvase count
+fin parcero
+
+; Test the character classification
 parcero principal() devuelve numero
-    devuelvase test_lexer_helpers()
+    ; Return result of count_words
+    devuelvase count_words()
 fin parcero

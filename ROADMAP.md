@@ -618,23 +618,23 @@ notario servir                    # Local doc server
 
 ## Milestones
 
-### Milestone 1: "Hola Mundo"
+### Milestone 1: "Hola Mundo" ✓
 
-- [ ] Stage 0 lexer complete
-- [ ] Stage 0 parser complete
-- [ ] Basic codegen working
-- [ ] Can compile and run: `diga "Hola Mundo"`
+- [x] Stage 0 lexer complete
+- [x] Stage 0 parser complete
+- [x] Basic codegen working
+- [x] Can compile and run: `diga "Hola Mundo"`
 
-### Milestone 2: "Fibonacci"
+### Milestone 2: "Fibonacci" ✓
 
-- [ ] Functions working
-- [ ] Recursion working
-- [ ] Conditionals working
-- [ ] Can compile and run recursive fibonacci
+- [x] Functions working
+- [x] Recursion working
+- [x] Conditionals working
+- [x] Can compile and run recursive fibonacci
 
-### Milestone 3: "Self-Aware"
+### Milestone 3: "Self-Aware" (In Progress)
 
-- [ ] Stage 0 complete
+- [x] Stage 0 complete (stress tested)
 - [ ] Stage 1 compiles successfully
 - [ ] Stage 1 can compile itself
 - [ ] Identical output verification

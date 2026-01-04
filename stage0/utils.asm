@@ -12,6 +12,7 @@ default rel
 ; -----------------------------------------------------------------------------
 global util_strlen
 global util_streq
+global util_strcmp
 global util_memcpy
 global util_memset
 global util_memcmp
@@ -67,6 +68,34 @@ util_streq:
     ret
 .not_equal:
     xor     rax, rax
+    pop     rbx
+    ret
+
+; -----------------------------------------------------------------------------
+; util_strcmp - Compare two strings (C-style)
+; -----------------------------------------------------------------------------
+; Input:  rdi = string 1
+;         rsi = string 2
+; Output: rax = 0 if equal, <0 if s1<s2, >0 if s1>s2
+; -----------------------------------------------------------------------------
+util_strcmp:
+    push    rbx
+.loop:
+    movzx   eax, byte [rdi]
+    movzx   ebx, byte [rsi]
+    cmp     al, bl
+    jne     .diff
+    test    al, al
+    jz      .equal
+    inc     rdi
+    inc     rsi
+    jmp     .loop
+.equal:
+    xor     rax, rax
+    pop     rbx
+    ret
+.diff:
+    sub     eax, ebx
     pop     rbx
     ret
 

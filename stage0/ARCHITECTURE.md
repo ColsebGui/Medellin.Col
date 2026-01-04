@@ -295,3 +295,40 @@ stage0/
 2. Create program headers
 3. Write sections (.text, .data, .rodata)
 4. Output executable file
+
+## Supported Features (Stage 0 Complete)
+
+### Types
+- `numero` - 64-bit signed integer
+- `byte` - 8-bit unsigned integer (compatible with numero)
+- `booleano` - Boolean (not yet fully implemented)
+- `arreglo[N] de T` - Fixed-size arrays
+
+### Syntax
+- Functions: `parcero nombre(param: tipo) devuelve tipo ... fin parcero`
+- Variables: `tipo nombre` followed by `nombre es valor`
+- Conditionals: `si ... entonces ... sino ... listo`
+- While loops: `mientras ... haga ... listo`
+- Returns: `devuelvase expresion`
+- Comparison: `es_igual`, `es_menor`, `es_mayor`, `menor_igual`, `mayor_igual`
+- Arithmetic: `mas`, `menos`, `por`, `entre`
+- Boolean: `y`, `o`, `no` (note: `no` requires parentheses around operand)
+- Hex literals: `0xFF`, `0x2A`
+
+### Tested Features
+All features verified via comprehensive stress test (`tests/stress_test.mcol`):
+1. Recursion (Fibonacci)
+2. Fixed-size arrays with indexing
+3. Nested conditionals
+4. Boolean operations (y, o, no)
+5. Multi-parameter functions (up to 6 params)
+6. Hex literals and byte type
+7. Forward function references
+
+### Known Limitations
+1. The `no` operator requires parentheses: `no (expr)` not `no expr`
+2. No string operations beyond `diga` output
+3. No floating-point support
+4. Maximum 6 function parameters via registers
+5. No structs/records (Phase 3)
+6. No generics (Phase 3)
