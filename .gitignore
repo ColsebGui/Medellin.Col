@@ -1,0 +1,11 @@
+# Build artifacts
+*.o
+stage0/medellin
+stage1/medellin
+
+# Test outputs
+/tmp/
+
+# Editor files
+*.swp
+*~

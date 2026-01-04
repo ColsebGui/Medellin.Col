@@ -78,6 +78,9 @@ extern error_column
 %define TOKEN_KW_SUME       121
 %define TOKEN_KW_QUITE      122
 %define TOKEN_KW_NADA       123
+%define TOKEN_KW_ARREGLO    124
+%define TOKEN_KW_DE         125
+%define TOKEN_KW_BYTE       126
 
 ; Token structure size
 %define TOKEN_SIZE          24
@@ -145,6 +148,9 @@ section .data
         dq kw_es_menor,     8,  TOKEN_MENOR
         dq kw_mayor_igual,  11, TOKEN_MAYOR_IGUAL
         dq kw_menor_igual,  11, TOKEN_MENOR_IGUAL
+        dq kw_arreglo,      7,  TOKEN_KW_ARREGLO
+        dq kw_de,           2,  TOKEN_KW_DE
+        dq kw_byte,         4,  TOKEN_KW_BYTE
         dq 0, 0, 0          ; End marker
 
     ; Keyword strings
@@ -185,6 +191,9 @@ section .data
     kw_es_menor:    db "es_menor", 0
     kw_mayor_igual: db "mayor_igual", 0
     kw_menor_igual: db "menor_igual", 0
+    kw_arreglo:     db "arreglo", 0
+    kw_de:          db "de", 0
+    kw_byte:        db "byte", 0
 
     ; Error messages
     err_unexpected_char:    db "Caracter inesperado", 0

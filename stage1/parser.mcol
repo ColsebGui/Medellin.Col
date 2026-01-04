@@ -1,0 +1,226 @@
+; =============================================================================
+; MEDELLIN.COL - STAGE 1: PARSER
+; =============================================================================
+; Recursive descent parser for Medellin.Col source code
+; Builds AST from token stream
+; =============================================================================
+
+; Token types (must match lexer)
+; TOKEN_EOF       = 0
+; TOKEN_NUMERO    = 1
+; TOKEN_IDENT     = 10
+; TOKEN_PARCERO   = 100
+; TOKEN_FIN       = 101
+; TOKEN_SI        = 102
+; TOKEN_ENTONCES  = 103
+; TOKEN_SINO      = 104
+; TOKEN_LISTO     = 105
+; TOKEN_MIENTRAS  = 106
+; TOKEN_HAGA      = 107
+; TOKEN_DEVUELVASE = 111
+; TOKEN_DEVUELVE  = 120
+; TOKEN_ES        = 117
+; TOKEN_MAS       = 20
+; TOKEN_MENOS     = 21
+; TOKEN_POR       = 22
+; TOKEN_ENTRE     = 23
+; TOKEN_ES_IGUAL  = 30
+; TOKEN_ES_MENOR  = 33
+; TOKEN_ES_MAYOR  = 32
+; TOKEN_PAREN_IZQ = 50
+; TOKEN_PAREN_DER = 51
+; TOKEN_DOS_PUNTOS = 54
+; TOKEN_COMA      = 55
+
+; AST node types
+; AST_PROGRAMA    = 1
+; AST_PARCERO     = 2
+; AST_PARAMETRO   = 3
+; AST_VARIABLE    = 4
+; AST_BLOQUE      = 20
+; AST_SI          = 21
+; AST_MIENTRAS    = 22
+; AST_DEVUELVASE  = 24
+; AST_ASIGNACION  = 26
+; AST_BINARIO     = 40
+; AST_LLAMADA     = 42
+; AST_IDENT       = 43
+; AST_NUMERO_LIT  = 44
+
+; -----------------------------------------------------------------------------
+; Parser state
+; We use arrays to simulate parser state
+; -----------------------------------------------------------------------------
+
+; Token stream simulation (for testing)
+; Each token: [type, value, line, col] = 4 numbers
+; Max 256 tokens * 4 = 1024 entries
+parcero parser_test() devuelve numero
+    ; Simulate a simple token stream for:
+    ; parcero principal() devuelve numero
+    ;     devuelvase 42
+    ; fin parcero
+
+    arreglo[64] de numero tokens
+    numero tok_count
+    numero result
+
+    ; Token 0: parcero (100)
+    tokens[0] es 100
+    ; Token 1: principal (ident = 10)
+    tokens[1] es 10
+    ; Token 2: ( = 50
+    tokens[2] es 50
+    ; Token 3: ) = 51
+    tokens[3] es 51
+    ; Token 4: devuelve = 120
+    tokens[4] es 120
+    ; Token 5: numero (ident for type name = 10)
+    tokens[5] es 10
+    ; Token 6: devuelvase = 111
+    tokens[6] es 111
+    ; Token 7: 42 (numero literal = 1)
+    tokens[7] es 1
+    ; Token 8: fin = 101
+    tokens[8] es 101
+    ; Token 9: parcero = 100
+    tokens[9] es 100
+    ; Token 10: EOF = 0
+    tokens[10] es 0
+
+    tok_count es 11
+
+    ; Parse: expect parcero
+    result es 0
+    si tokens[result] es_igual 100 entonces
+        result es result mas 1
+        ; expect ident (principal)
+        si tokens[result] es_igual 10 entonces
+            result es result mas 1
+            ; expect (
+            si tokens[result] es_igual 50 entonces
+                result es result mas 1
+                ; expect )
+                si tokens[result] es_igual 51 entonces
+                    result es result mas 1
+                    ; expect devuelve
+                    si tokens[result] es_igual 120 entonces
+                        result es result mas 1
+                        ; expect type name (ident)
+                        si tokens[result] es_igual 10 entonces
+                            result es result mas 1
+                            ; expect devuelvase
+                            si tokens[result] es_igual 111 entonces
+                                result es result mas 1
+                                ; expect number literal
+                                si tokens[result] es_igual 1 entonces
+                                    result es result mas 1
+                                    ; expect fin
+                                    si tokens[result] es_igual 101 entonces
+                                        result es result mas 1
+                                        ; expect parcero
+                                        si tokens[result] es_igual 100 entonces
+                                            result es result mas 1
+                                            ; expect EOF
+                                            si tokens[result] es_igual 0 entonces
+                                                ; All 11 tokens parsed!
+                                                devuelvase 11
+                                            listo
+                                        listo
+                                    listo
+                                listo
+                            listo
+                        listo
+                    listo
+                listo
+            listo
+        listo
+    listo
+
+    ; Return how far we got
+    devuelvase result
+fin parcero
+
+; -----------------------------------------------------------------------------
+; Token matching helpers
+; -----------------------------------------------------------------------------
+
+; Check if token type matches expected
+parcero tok_match(got: numero, expected: numero) devuelve numero
+    si got es_igual expected entonces
+        devuelvase 1
+    listo
+    devuelvase 0
+fin parcero
+
+; Check if token is a comparison operator
+parcero tok_is_comparison(tok: numero) devuelve numero
+    ; es_igual = 30, no_igual = 31, mayor = 32, menor = 33
+    si tok mayor_igual 30 y tok menor_igual 35 entonces
+        devuelvase 1
+    listo
+    devuelvase 0
+fin parcero
+
+; Check if token is an arithmetic operator
+parcero tok_is_arithmetic(tok: numero) devuelve numero
+    ; mas = 20, menos = 21, por = 22, entre = 23
+    si tok mayor_igual 20 y tok menor_igual 24 entonces
+        devuelvase 1
+    listo
+    devuelvase 0
+fin parcero
+
+; Check if token is additive (+ or -)
+parcero tok_is_additive(tok: numero) devuelve numero
+    si tok es_igual 20 o tok es_igual 21 entonces
+        devuelvase 1
+    listo
+    devuelvase 0
+fin parcero
+
+; Check if token is multiplicative (* or /)
+parcero tok_is_multiplicative(tok: numero) devuelve numero
+    si tok es_igual 22 o tok es_igual 23 entonces
+        devuelvase 1
+    listo
+    devuelvase 0
+fin parcero
+
+; -----------------------------------------------------------------------------
+; Test the parser components
+; -----------------------------------------------------------------------------
+
+parcero test_parser_helpers() devuelve numero
+    numero result
+    result es 0
+
+    ; Test tok_match
+    result es result mas tok_match(10, 10)       ; ident == ident -> 1
+    result es result mas tok_match(10, 20)       ; ident != mas -> 0
+
+    ; Test tok_is_comparison
+    result es result mas tok_is_comparison(30)   ; es_igual -> 1
+    result es result mas tok_is_comparison(33)   ; es_menor -> 1
+    result es result mas tok_is_comparison(20)   ; mas -> 0
+
+    ; Test tok_is_additive
+    result es result mas tok_is_additive(20)     ; mas -> 1
+    result es result mas tok_is_additive(21)     ; menos -> 1
+    result es result mas tok_is_additive(22)     ; por -> 0
+
+    ; Test tok_is_multiplicative
+    result es result mas tok_is_multiplicative(22) ; por -> 1
+    result es result mas tok_is_multiplicative(23) ; entre -> 1
+    result es result mas tok_is_multiplicative(20) ; mas -> 0
+
+    ; Expected: 1+0 + 1+1+0 + 1+1+0 + 1+1+0 = 7
+    devuelvase result
+fin parcero
+
+; Main test
+parcero principal() devuelve numero
+    ; Return parser_test result directly for now
+    ; This tests the token parsing logic
+    devuelvase parser_test()
+fin parcero

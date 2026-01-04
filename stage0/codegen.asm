@@ -16,7 +16,9 @@ extern symbols_get_type
 extern symbols_enter_scope
 extern symbols_leave_scope
 extern symbols_define
+extern symbols_alloc_extra
 extern util_strlen
+extern util_strcmp
 extern strings_intern
 
 ; Symbol constants
@@ -50,6 +52,8 @@ extern strings_intern
 %define AST_NUMERO_LIT      44
 %define AST_TEXTO_LIT       45
 %define AST_BOOL_LIT        46
+%define AST_ARREGLO_TIPO    47
+%define AST_ARREGLO_ACCESO  48
 
 ; AST offsets
 %define AST_KIND            0
@@ -103,6 +107,11 @@ extern strings_intern
 %define AST_IDENT_NAME      16
 %define AST_LIT_VAL         16
 
+%define AST_ARREGLO_TIPO_LEN    16
+%define AST_ARREGLO_TIPO_ELEM   24
+%define AST_ARREGLO_ACCESO_ARR  16
+%define AST_ARREGLO_ACCESO_IDX  24
+
 ; Binary operators
 %define OP_MAS              1
 %define OP_MENOS            2
@@ -145,6 +154,9 @@ section .data
     rt_diga_numero:     db "_medellin_diga_numero", 0
     ; Main function name
     str_principal:      db "principal", 0
+    ; Built-in I/O function names
+    str_leer_byte:      db "leer_byte", 0
+    str_escribir_byte:  db "escribir_byte", 0
 
 section .bss
     ; Code buffer (4MB)
@@ -516,9 +528,31 @@ gen_variable:
     mov     rbp, rsp
     push    rbx
     push    r12
+    push    r13
 
     mov     r12, rdi
 
+    ; Check if type is array and pre-allocate extra space
+    ; parse_type returns small int for primitives, pointer for arrays
+    mov     rax, [r12 + AST_VARIABLE_TYPE]
+    cmp     rax, 0x1000                 ; Pointers are > 4096
+    jb      .not_array
+
+    ; Check if it's actually an array type node
+    movzx   ecx, byte [rax]             ; Get AST node kind
+    cmp     cl, AST_ARREGLO_TIPO
+    jne     .not_array
+
+    ; Array type - get size N and allocate (N-1)*8 extra bytes
+    mov     rax, [rax + AST_ARREGLO_TIPO_LEN]
+    mov     r13, rax                    ; Save array size
+    dec     rax                         ; N-1
+    jz      .not_array                  ; If N=1, no extra allocation needed
+    shl     rax, 3                      ; (N-1)*8
+    mov     rdi, rax
+    call    symbols_alloc_extra
+
+.not_array:
     ; Define in symbol table to get offset
     mov     rdi, [r12 + AST_VARIABLE_NAME]
     mov     rsi, SYM_VARIABLE
@@ -540,6 +574,7 @@ gen_variable:
     call    emit_store_rax_to_stack
 
 .done:
+    pop     r13
     pop     r12
     pop     rbx
     pop     rbp
@@ -903,14 +938,21 @@ gen_asignacion:
     mov     rbp, rsp
     push    rbx
     push    r12
+    push    r13
 
     mov     r12, rdi
 
-    ; Generate value
+    ; Generate value (result in rax)
     mov     rdi, [r12 + AST_ASIGNACION_VAL]
     call    gen_expression
 
-    ; Get target offset
+    ; Check if target is array access
+    mov     rdi, [r12 + AST_ASIGNACION_TGT]
+    movzx   eax, byte [rdi]
+    cmp     al, AST_ARREGLO_ACCESO
+    je      .array_target
+
+    ; Simple variable target
     mov     rdi, [r12 + AST_ASIGNACION_TGT]
     mov     rdi, [rdi + AST_IDENT_NAME]
     call    symbols_lookup
@@ -919,7 +961,68 @@ gen_asignacion:
     ; Store
     mov     rdi, rbx
     call    emit_store_rax_to_stack
+    jmp     .done
 
+.array_target:
+    ; Target is arr[idx] - first push the value
+    call    emit_push_rax
+
+    mov     r13, [r12 + AST_ASIGNACION_TGT]  ; AST_ARREGLO_ACCESO node
+
+    ; Get array base offset
+    mov     rdi, [r13 + AST_ARREGLO_ACCESO_ARR]
+    mov     rdi, [rdi + AST_IDENT_NAME]
+    call    symbols_lookup
+    mov     rbx, [rax + SYM_OFFSET]         ; Array base offset
+
+    ; Generate index expression (result in rax)
+    mov     rdi, [r13 + AST_ARREGLO_ACCESO_IDX]
+    call    gen_expression
+
+    ; Emit: mov rdi, rax (index)
+    call    emit_mov_rdi_rax
+
+    ; Emit: shl rdi, 3 (multiply by 8)
+    mov     dil, 0x48                   ; REX.W
+    call    emit_byte
+    mov     dil, 0xC1                   ; shl r/m64, imm8
+    call    emit_byte
+    mov     dil, 0xE7                   ; ModRM: rdi
+    call    emit_byte
+    mov     dil, 3                      ; shift by 3 (multiply by 8)
+    call    emit_byte
+
+    ; Emit: lea rcx, [rbp + offset] (array base)
+    mov     dil, 0x48                   ; REX.W
+    call    emit_byte
+    mov     dil, 0x8D                   ; lea
+    call    emit_byte
+    mov     dil, 0x8D                   ; ModRM: rcx, [rbp+disp32]
+    call    emit_byte
+    mov     rdi, rbx                    ; Array base offset
+    call    emit_dword
+
+    ; Emit: add rcx, rdi (base + index*8)
+    mov     dil, 0x48
+    call    emit_byte
+    mov     dil, 0x01                   ; add r/m64, r64
+    call    emit_byte
+    mov     dil, 0xF9                   ; ModRM: rcx, rdi
+    call    emit_byte
+
+    ; Emit: pop rax (get value)
+    call    emit_pop_rax
+
+    ; Emit: mov [rcx], rax
+    mov     dil, 0x48                   ; REX.W
+    call    emit_byte
+    mov     dil, 0x89                   ; mov r/m64, r64
+    call    emit_byte
+    mov     dil, 0x01                   ; ModRM: [rcx], rax
+    call    emit_byte
+
+.done:
+    pop     r13
     pop     r12
     pop     rbx
     pop     rbp
@@ -950,6 +1053,8 @@ gen_expression:
     je      .unario
     cmp     al, AST_LLAMADA
     je      .llamada
+    cmp     al, AST_ARREGLO_ACCESO
+    je      .arreglo_acceso
 
     ; Unknown - load 0
     xor     rdi, rdi
@@ -992,6 +1097,66 @@ gen_expression:
 
 .llamada:
     call    gen_llamada
+    jmp     .done
+
+.arreglo_acceso:
+    ; Generate array element access: base + index * 8
+    push    r12
+    push    r13
+    mov     r12, rbx                    ; Save AST node
+
+    ; Get array base address
+    mov     rdi, [r12 + AST_ARREGLO_ACCESO_ARR]
+    mov     rdi, [rdi + AST_IDENT_NAME]
+    call    symbols_lookup
+    mov     r13, [rax + SYM_OFFSET]     ; Array base offset on stack
+
+    ; Generate index expression (result in rax)
+    mov     rdi, [r12 + AST_ARREGLO_ACCESO_IDX]
+    call    gen_expression
+
+    ; Emit: mov rdi, rax (index)
+    call    emit_mov_rdi_rax
+
+    ; Emit: shl rdi, 3 (multiply by 8 for 64-bit elements)
+    mov     dil, 0x48                   ; REX.W
+    call    emit_byte
+    mov     dil, 0xC1                   ; shl r/m64, imm8
+    call    emit_byte
+    mov     dil, 0xE7                   ; ModRM: rdi
+    call    emit_byte
+    mov     dil, 3                      ; shift by 3 (multiply by 8)
+    call    emit_byte
+
+    ; Emit: lea rax, [rbp + offset]
+    mov     dil, 0x48                   ; REX.W
+    call    emit_byte
+    mov     dil, 0x8D                   ; lea
+    call    emit_byte
+    mov     dil, 0x85                   ; ModRM: rax, [rbp+disp32]
+    call    emit_byte
+    mov     rdi, r13                    ; Array base offset
+    call    emit_dword
+
+    ; Emit: add rax, rdi (base + index*8)
+    mov     dil, 0x48
+    call    emit_byte
+    mov     dil, 0x01                   ; add
+    call    emit_byte
+    mov     dil, 0xF8                   ; ModRM: rax, rdi
+    call    emit_byte
+
+    ; Emit: mov rax, [rax] (load element)
+    mov     dil, 0x48
+    call    emit_byte
+    mov     dil, 0x8B
+    call    emit_byte
+    mov     dil, 0x00                   ; ModRM: rax, [rax]
+    call    emit_byte
+
+    pop     r13
+    pop     r12
+    jmp     .done
 
 .done:
     pop     rbx
@@ -1245,8 +1410,227 @@ gen_llamada:
     ; Get function name
     mov     rdi, [r12 + AST_LLAMADA_CALLEE]
     mov     rdi, [rdi + AST_IDENT_NAME]
-    call    emit_call_func
+    push    rdi                         ; Save function name
 
+    ; Check for built-in leer_byte
+    lea     rsi, [str_leer_byte]
+    call    util_strcmp
+    test    rax, rax
+    jz      .builtin_leer_byte
+
+    ; Check for built-in escribir_byte
+    pop     rdi
+    push    rdi
+    lea     rsi, [str_escribir_byte]
+    call    util_strcmp
+    test    rax, rax
+    jz      .builtin_escribir_byte
+
+    ; Regular function call
+    pop     rdi
+    call    emit_call_func
+    jmp     .llamada_done
+
+.builtin_leer_byte:
+    ; leer_byte() - read one byte from stdin
+    ; Generated code:
+    ;   sub rsp, 16          ; Allocate buffer on stack
+    ;   xor eax, eax         ; sys_read = 0
+    ;   xor edi, edi         ; fd = stdin = 0
+    ;   lea rsi, [rsp]       ; buf = stack
+    ;   mov edx, 1           ; count = 1
+    ;   syscall
+    ;   test rax, rax        ; Check return value
+    ;   jg .read_ok          ; If > 0, got a byte
+    ;   mov rax, -1          ; Return -1 on EOF/error
+    ;   jmp .read_done
+    ;   .read_ok:
+    ;   movzx rax, byte [rsp] ; Get the byte
+    ;   .read_done:
+    ;   add rsp, 16          ; Restore stack
+
+    pop     rdi                         ; Discard function name
+
+    ; sub rsp, 16 = 48 83 EC 10
+    mov     dil, 0x48
+    call    emit_byte
+    mov     dil, 0x83
+    call    emit_byte
+    mov     dil, 0xEC
+    call    emit_byte
+    mov     dil, 0x10
+    call    emit_byte
+
+    ; xor eax, eax = 31 C0
+    mov     dil, 0x31
+    call    emit_byte
+    mov     dil, 0xC0
+    call    emit_byte
+
+    ; xor edi, edi = 31 FF
+    mov     dil, 0x31
+    call    emit_byte
+    mov     dil, 0xFF
+    call    emit_byte
+
+    ; lea rsi, [rsp] = 48 8D 34 24
+    mov     dil, 0x48
+    call    emit_byte
+    mov     dil, 0x8D
+    call    emit_byte
+    mov     dil, 0x34
+    call    emit_byte
+    mov     dil, 0x24
+    call    emit_byte
+
+    ; mov edx, 1 = BA 01 00 00 00
+    mov     dil, 0xBA
+    call    emit_byte
+    mov     edi, 1
+    call    emit_dword
+
+    ; syscall = 0F 05
+    call    emit_syscall
+
+    ; test rax, rax = 48 85 C0
+    mov     dil, 0x48
+    call    emit_byte
+    mov     dil, 0x85
+    call    emit_byte
+    mov     dil, 0xC0
+    call    emit_byte
+
+    ; jg .read_ok (9 bytes forward: 7 for mov rax,-1 + 2 for jmp) = 7F 09
+    mov     dil, 0x7F
+    call    emit_byte
+    mov     dil, 0x09
+    call    emit_byte
+
+    ; mov rax, -1 = 48 C7 C0 FF FF FF FF
+    mov     dil, 0x48
+    call    emit_byte
+    mov     dil, 0xC7
+    call    emit_byte
+    mov     dil, 0xC0
+    call    emit_byte
+    mov     dil, 0xFF
+    call    emit_byte
+    mov     dil, 0xFF
+    call    emit_byte
+    mov     dil, 0xFF
+    call    emit_byte
+    mov     dil, 0xFF
+    call    emit_byte
+
+    ; jmp .read_done (5 bytes) = EB 05
+    mov     dil, 0xEB
+    call    emit_byte
+    mov     dil, 0x05
+    call    emit_byte
+
+    ; .read_ok: movzx rax, byte [rsp] = 48 0F B6 04 24
+    mov     dil, 0x48
+    call    emit_byte
+    mov     dil, 0x0F
+    call    emit_byte
+    mov     dil, 0xB6
+    call    emit_byte
+    mov     dil, 0x04
+    call    emit_byte
+    mov     dil, 0x24
+    call    emit_byte
+
+    ; .read_done: add rsp, 16 = 48 83 C4 10
+    mov     dil, 0x48
+    call    emit_byte
+    mov     dil, 0x83
+    call    emit_byte
+    mov     dil, 0xC4
+    call    emit_byte
+    mov     dil, 0x10
+    call    emit_byte
+
+    jmp     .llamada_done
+
+.builtin_escribir_byte:
+    ; escribir_byte(b) - write one byte to stdout
+    ; rdi already has the byte value from argument handling
+    ; Generated code:
+    ;   sub rsp, 16          ; Allocate buffer on stack
+    ;   mov [rsp], dil       ; Store byte
+    ;   mov eax, 1           ; sys_write = 1
+    ;   mov edi, 1           ; fd = stdout = 1
+    ;   lea rsi, [rsp]       ; buf = stack
+    ;   mov edx, 1           ; count = 1
+    ;   syscall
+    ;   add rsp, 16          ; Restore stack
+
+    pop     rdi                         ; Discard function name
+
+    ; sub rsp, 16 = 48 83 EC 10
+    mov     dil, 0x48
+    call    emit_byte
+    mov     dil, 0x83
+    call    emit_byte
+    mov     dil, 0xEC
+    call    emit_byte
+    mov     dil, 0x10
+    call    emit_byte
+
+    ; mov [rsp], dil = 40 88 3C 24
+    mov     dil, 0x40
+    call    emit_byte
+    mov     dil, 0x88
+    call    emit_byte
+    mov     dil, 0x3C
+    call    emit_byte
+    mov     dil, 0x24
+    call    emit_byte
+
+    ; mov eax, 1 = B8 01 00 00 00
+    mov     dil, 0xB8
+    call    emit_byte
+    mov     edi, 1
+    call    emit_dword
+
+    ; mov edi, 1 = BF 01 00 00 00
+    mov     dil, 0xBF
+    call    emit_byte
+    mov     edi, 1
+    call    emit_dword
+
+    ; lea rsi, [rsp] = 48 8D 34 24
+    mov     dil, 0x48
+    call    emit_byte
+    mov     dil, 0x8D
+    call    emit_byte
+    mov     dil, 0x34
+    call    emit_byte
+    mov     dil, 0x24
+    call    emit_byte
+
+    ; mov edx, 1 = BA 01 00 00 00
+    mov     dil, 0xBA
+    call    emit_byte
+    mov     edi, 1
+    call    emit_dword
+
+    ; syscall = 0F 05
+    call    emit_syscall
+
+    ; add rsp, 16 = 48 83 C4 10
+    mov     dil, 0x48
+    call    emit_byte
+    mov     dil, 0x83
+    call    emit_byte
+    mov     dil, 0xC4
+    call    emit_byte
+    mov     dil, 0x10
+    call    emit_byte
+
+    jmp     .llamada_done
+
+.llamada_done:
     add     rsp, 8
     pop     r14
     pop     r13

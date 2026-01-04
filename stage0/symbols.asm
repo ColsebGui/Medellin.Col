@@ -78,6 +78,7 @@ global symbols_lookup
 global symbols_lookup_local
 global symbols_current_scope
 global symbols_set_type
+global symbols_alloc_extra
 global symbols_get_type
 global symbols_next_offset
 
@@ -511,6 +512,17 @@ symbols_get_type:
 ; -----------------------------------------------------------------------------
 symbols_next_offset:
     mov     rax, [stack_offset]
+    ret
+
+; -----------------------------------------------------------------------------
+; symbols_alloc_extra - Allocate extra stack space (for arrays)
+; -----------------------------------------------------------------------------
+; Input:  rdi = extra bytes to allocate
+; Note:   Call this BEFORE symbols_define for arrays.
+;         symbols_define will allocate 8 more bytes, so pass (N-1)*8 here.
+; -----------------------------------------------------------------------------
+symbols_alloc_extra:
+    sub     qword [stack_offset], rdi
     ret
 
 ; =============================================================================

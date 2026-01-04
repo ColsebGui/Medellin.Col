@@ -1,0 +1,130 @@
+; =============================================================================
+; STAGE 0 COMPREHENSIVE STRESS TEST
+; =============================================================================
+; Tests all Stage 0 features. Expected exit code: 6 (all tests pass)
+; Run with: ./medellin0 tests/stress_test.mcol /tmp/stress && /tmp/stress
+; =============================================================================
+
+parcero fib(n: numero) devuelve numero
+    si n es_menor 2 entonces
+        devuelvase n
+    listo
+    devuelvase fib(n menos 1) mas fib(n menos 2)
+fin parcero
+
+parcero sum_array() devuelve numero
+    arreglo[10] de numero arr
+    numero i
+    numero suma
+
+    i es 0
+    mientras i es_menor 10 haga
+        arr[i] es i mas 1
+        i es i mas 1
+    listo
+
+    suma es 0
+    i es 0
+    mientras i es_menor 10 haga
+        suma es suma mas arr[i]
+        i es i mas 1
+    listo
+
+    devuelvase suma
+fin parcero
+
+parcero classify(n: numero) devuelve numero
+    si n es_menor 0 entonces
+        si n es_menor 0 menos 10 entonces
+            devuelvase 1
+        sino
+            devuelvase 2
+        listo
+    sino
+        si n es_igual 0 entonces
+            devuelvase 3
+        sino
+            si n es_mayor 10 entonces
+                devuelvase 4
+            sino
+                devuelvase 5
+            listo
+        listo
+    listo
+    devuelvase 0
+fin parcero
+
+parcero test_bools() devuelve numero
+    ; Note: 'no' operator requires parentheses around operand
+    si 1 es_igual 1 y 2 es_igual 2 entonces
+        si no (0 es_igual 1) entonces
+            devuelvase 1
+        listo
+    listo
+    devuelvase 0
+fin parcero
+
+parcero sum6(a: numero, b: numero, c: numero, d: numero, e: numero, f: numero) devuelve numero
+    devuelvase a mas b mas c mas d mas e mas f
+fin parcero
+
+parcero test_hex() devuelve numero
+    byte b
+    b es 0xFF
+    si b es_igual 255 entonces
+        devuelvase 1
+    listo
+    devuelvase 0
+fin parcero
+
+parcero principal() devuelve numero
+    numero result
+
+    ; Test 1: Fibonacci - fib(10) should be 55
+    result es fib(10)
+    si result es_igual 55 entonces
+        result es 1
+    sino
+        devuelvase 100
+    listo
+
+    ; Test 2: Array sum - 1+2+...+10 = 55
+    si sum_array() es_igual 55 entonces
+        result es result mas 1
+    sino
+        devuelvase 101
+    listo
+
+    ; Test 3: Nested conditionals - 1+2+3+5+4 = 15
+    numero class_sum
+    class_sum es classify(0 menos 20) mas classify(0 menos 5) mas classify(0) mas classify(5) mas classify(20)
+    si class_sum es_igual 15 entonces
+        result es result mas 1
+    sino
+        devuelvase 102
+    listo
+
+    ; Test 4: Boolean operations
+    si test_bools() es_igual 1 entonces
+        result es result mas 1
+    sino
+        devuelvase 103
+    listo
+
+    ; Test 5: 6-parameter function - 1+2+3+4+5+6 = 21
+    si sum6(1, 2, 3, 4, 5, 6) es_igual 21 entonces
+        result es result mas 1
+    sino
+        devuelvase 104
+    listo
+
+    ; Test 6: Hex literals and byte type
+    si test_hex() es_igual 1 entonces
+        result es result mas 1
+    sino
+        devuelvase 105
+    listo
+
+    ; All 6 tests passed
+    devuelvase result
+fin parcero

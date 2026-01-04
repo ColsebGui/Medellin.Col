@@ -12,6 +12,7 @@ default rel
 ; -----------------------------------------------------------------------------
 global util_strlen
 global util_streq
+global util_strcmp
 global util_memcpy
 global util_memset
 global util_memcmp
@@ -67,6 +68,34 @@ util_streq:
     ret
 .not_equal:
     xor     rax, rax
+    pop     rbx
+    ret
+
+; -----------------------------------------------------------------------------
+; util_strcmp - Compare two strings (C-style)
+; -----------------------------------------------------------------------------
+; Input:  rdi = string 1
+;         rsi = string 2
+; Output: rax = 0 if equal, <0 if s1<s2, >0 if s1>s2
+; -----------------------------------------------------------------------------
+util_strcmp:
+    push    rbx
+.loop:
+    movzx   eax, byte [rdi]
+    movzx   ebx, byte [rsi]
+    cmp     al, bl
+    jne     .diff
+    test    al, al
+    jz      .equal
+    inc     rdi
+    inc     rsi
+    jmp     .loop
+.equal:
+    xor     rax, rax
+    pop     rbx
+    ret
+.diff:
+    sub     eax, ebx
     pop     rbx
     ret
 
@@ -239,9 +268,53 @@ util_parse_int:
 
     ; Check for minus sign
     cmp     byte [rbx], '-'
-    jne     .parse_digits
+    jne     .check_hex
     inc     r12                     ; negative = true
     inc     rbx
+
+.check_hex:
+    ; Check for 0x prefix (hex number)
+    cmp     byte [rbx], '0'
+    jne     .parse_digits
+    cmp     byte [rbx + 1], 'x'
+    je      .parse_hex
+    cmp     byte [rbx + 1], 'X'
+    je      .parse_hex
+    jmp     .parse_digits
+
+.parse_hex:
+    add     rbx, 2                  ; Skip "0x"
+.parse_hex_loop:
+    movzx   ecx, byte [rbx]
+    ; Check 0-9
+    cmp     cl, '0'
+    jb      .done
+    cmp     cl, '9'
+    jbe     .hex_09
+    ; Check a-f
+    cmp     cl, 'a'
+    jb      .check_upper
+    cmp     cl, 'f'
+    ja      .done
+    sub     cl, 'a'
+    add     cl, 10
+    jmp     .hex_add
+.check_upper:
+    ; Check A-F
+    cmp     cl, 'A'
+    jb      .done
+    cmp     cl, 'F'
+    ja      .done
+    sub     cl, 'A'
+    add     cl, 10
+    jmp     .hex_add
+.hex_09:
+    sub     cl, '0'
+.hex_add:
+    shl     rax, 4
+    add     rax, rcx
+    inc     rbx
+    jmp     .parse_hex_loop
 
 .parse_digits:
     movzx   ecx, byte [rbx]
