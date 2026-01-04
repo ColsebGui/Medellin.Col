@@ -1761,51 +1761,51 @@ parcero principal() devuelve numero
                                                     listo
                                                 listo
                                             listo
+                                            ; Emit return epilogue for variable/expression devuelvase
+                                            si fname[fcnt menos 1] es_igual 112 entonces
+                                                ; principal: exit syscall
+                                                code[pos] es 0x48
+                                                pos es pos mas 1
+                                                code[pos] es 0x89
+                                                pos es pos mas 1
+                                                code[pos] es 0xEC
+                                                pos es pos mas 1
+                                                code[pos] es 0x5D
+                                                pos es pos mas 1
+                                                code[pos] es 0x48
+                                                pos es pos mas 1
+                                                code[pos] es 0x89
+                                                pos es pos mas 1
+                                                code[pos] es 0xC7
+                                                pos es pos mas 1
+                                                code[pos] es 0xB8
+                                                pos es pos mas 1
+                                                code[pos] es 0x3C
+                                                pos es pos mas 1
+                                                code[pos] es 0x00
+                                                pos es pos mas 1
+                                                code[pos] es 0x00
+                                                pos es pos mas 1
+                                                code[pos] es 0x00
+                                                pos es pos mas 1
+                                                code[pos] es 0x0F
+                                                pos es pos mas 1
+                                                code[pos] es 0x05
+                                                pos es pos mas 1
+                                            sino
+                                                ; non-principal: ret
+                                                code[pos] es 0x48
+                                                pos es pos mas 1
+                                                code[pos] es 0x89
+                                                pos es pos mas 1
+                                                code[pos] es 0xEC
+                                                pos es pos mas 1
+                                                code[pos] es 0x5D
+                                                pos es pos mas 1
+                                                code[pos] es 0xC3
+                                                pos es pos mas 1
+                                            listo
                                         listo
-                                    listo
-                                    ; Emit return epilogue for variable/expression devuelvase
-                                    si fname[fcnt menos 1] es_igual 112 entonces
-                                        ; principal: exit syscall
-                                        code[pos] es 0x48
-                                        pos es pos mas 1
-                                        code[pos] es 0x89
-                                        pos es pos mas 1
-                                        code[pos] es 0xEC
-                                        pos es pos mas 1
-                                        code[pos] es 0x5D
-                                        pos es pos mas 1
-                                        code[pos] es 0x48
-                                        pos es pos mas 1
-                                        code[pos] es 0x89
-                                        pos es pos mas 1
-                                        code[pos] es 0xC7
-                                        pos es pos mas 1
-                                        code[pos] es 0xB8
-                                        pos es pos mas 1
-                                        code[pos] es 0x3C
-                                        pos es pos mas 1
-                                        code[pos] es 0x00
-                                        pos es pos mas 1
-                                        code[pos] es 0x00
-                                        pos es pos mas 1
-                                        code[pos] es 0x00
-                                        pos es pos mas 1
-                                        code[pos] es 0x0F
-                                        pos es pos mas 1
-                                        code[pos] es 0x05
-                                        pos es pos mas 1
-                                    sino
-                                        ; non-principal: ret
-                                        code[pos] es 0x48
-                                        pos es pos mas 1
-                                        code[pos] es 0x89
-                                        pos es pos mas 1
-                                        code[pos] es 0xEC
-                                        pos es pos mas 1
-                                        code[pos] es 0x5D
-                                        pos es pos mas 1
-                                        code[pos] es 0xC3
-                                        pos es pos mas 1
                                     listo
                                 listo
                             listo
@@ -1977,8 +1977,10 @@ parcero principal() devuelve numero
                                         mientras fi2 es_menor fcnt haga
                                             si fname[fi2] es_igual vh entonces
                                                 foff2 es foff[fi2]
+                                                fi2 es fcnt
+                                            sino
+                                                fi2 es fi2 mas 1
                                             listo
-                                            fi2 es fi2 mas 1
                                         listo
                                         ; Emit call rel32 (E8 xx xx xx xx)
                                         numero call_off
