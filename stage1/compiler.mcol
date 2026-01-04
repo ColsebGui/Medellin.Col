@@ -906,6 +906,30 @@ parcero principal() devuelve numero
                                                 listo
                                             listo
                                         listo
+                                        ; mayor_igual (11)
+                                        si len es_igual 11 y buf[0] es_igual 109 y buf[1] es_igual 97 entonces
+                                            si buf[2] es_igual 121 y buf[3] es_igual 111 entonces
+                                                si buf[4] es_igual 114 y buf[5] es_igual 95 entonces
+                                                    si buf[6] es_igual 105 y buf[7] es_igual 103 entonces
+                                                        si buf[8] es_igual 117 y buf[9] es_igual 97 y buf[10] es_igual 108 entonces
+                                                            wop es 8
+                                                        listo
+                                                    listo
+                                                listo
+                                            listo
+                                        listo
+                                        ; menor_igual (11)
+                                        si len es_igual 11 y buf[0] es_igual 109 y buf[1] es_igual 101 entonces
+                                            si buf[2] es_igual 110 y buf[3] es_igual 111 entonces
+                                                si buf[4] es_igual 114 y buf[5] es_igual 95 entonces
+                                                    si buf[6] es_igual 105 y buf[7] es_igual 103 entonces
+                                                        si buf[8] es_igual 117 y buf[9] es_igual 97 y buf[10] es_igual 108 entonces
+                                                            wop es 9
+                                                        listo
+                                                    listo
+                                                listo
+                                            listo
+                                        listo
                                         si wop es_mayor 0 entonces
                                             ; push rax (first operand)
                                             code[pos] es 0x50
@@ -1016,6 +1040,24 @@ parcero principal() devuelve numero
                                                 code[pos] es 0x0F
                                                 pos es pos mas 1
                                                 code[pos] es 0x9F
+                                                pos es pos mas 1
+                                                code[pos] es 0xC0
+                                                pos es pos mas 1
+                                            listo
+                                            si wop es_igual 8 entonces
+                                                ; setge al
+                                                code[pos] es 0x0F
+                                                pos es pos mas 1
+                                                code[pos] es 0x9D
+                                                pos es pos mas 1
+                                                code[pos] es 0xC0
+                                                pos es pos mas 1
+                                            listo
+                                            si wop es_igual 9 entonces
+                                                ; setle al
+                                                code[pos] es 0x0F
+                                                pos es pos mas 1
+                                                code[pos] es 0x9E
                                                 pos es pos mas 1
                                                 code[pos] es 0xC0
                                                 pos es pos mas 1
@@ -1176,6 +1218,30 @@ parcero principal() devuelve numero
                                     listo
                                 listo
                             listo
+                            ; mayor_igual (11)
+                            si len es_igual 11 y buf[0] es_igual 109 y buf[1] es_igual 97 entonces
+                                si buf[2] es_igual 121 y buf[3] es_igual 111 entonces
+                                    si buf[4] es_igual 114 y buf[5] es_igual 95 entonces
+                                        si buf[6] es_igual 105 y buf[7] es_igual 103 entonces
+                                            si buf[8] es_igual 117 y buf[9] es_igual 97 y buf[10] es_igual 108 entonces
+                                                sop es 8
+                                            listo
+                                        listo
+                                    listo
+                                listo
+                            listo
+                            ; menor_igual (11)
+                            si len es_igual 11 y buf[0] es_igual 109 y buf[1] es_igual 101 entonces
+                                si buf[2] es_igual 110 y buf[3] es_igual 111 entonces
+                                    si buf[4] es_igual 114 y buf[5] es_igual 95 entonces
+                                        si buf[6] es_igual 105 y buf[7] es_igual 103 entonces
+                                            si buf[8] es_igual 117 y buf[9] es_igual 97 y buf[10] es_igual 108 entonces
+                                                sop es 9
+                                            listo
+                                        listo
+                                    listo
+                                listo
+                            listo
                             si sop es_mayor 0 entonces
                                 ; push rax (first operand)
                                 code[pos] es 0x50
@@ -1286,6 +1352,24 @@ parcero principal() devuelve numero
                                     code[pos] es 0x0F
                                     pos es pos mas 1
                                     code[pos] es 0x9F
+                                    pos es pos mas 1
+                                    code[pos] es 0xC0
+                                    pos es pos mas 1
+                                listo
+                                si sop es_igual 8 entonces
+                                    ; setge al
+                                    code[pos] es 0x0F
+                                    pos es pos mas 1
+                                    code[pos] es 0x9D
+                                    pos es pos mas 1
+                                    code[pos] es 0xC0
+                                    pos es pos mas 1
+                                listo
+                                si sop es_igual 9 entonces
+                                    ; setle al
+                                    code[pos] es 0x0F
+                                    pos es pos mas 1
+                                    code[pos] es 0x9E
                                     pos es pos mas 1
                                     code[pos] es 0xC0
                                     pos es pos mas 1
@@ -1424,6 +1508,35 @@ parcero principal() devuelve numero
                                             code[pos] es 0
                                             pos es pos mas 1
                                             code[pos] es 0
+                                            pos es pos mas 1
+                                            ; Emit return epilogue for literal devuelvase
+                                            code[pos] es 0x48
+                                            pos es pos mas 1
+                                            code[pos] es 0x89
+                                            pos es pos mas 1
+                                            code[pos] es 0xEC
+                                            pos es pos mas 1
+                                            code[pos] es 0x5D
+                                            pos es pos mas 1
+                                            code[pos] es 0x48
+                                            pos es pos mas 1
+                                            code[pos] es 0x89
+                                            pos es pos mas 1
+                                            code[pos] es 0xC7
+                                            pos es pos mas 1
+                                            code[pos] es 0xB8
+                                            pos es pos mas 1
+                                            code[pos] es 0x3C
+                                            pos es pos mas 1
+                                            code[pos] es 0x00
+                                            pos es pos mas 1
+                                            code[pos] es 0x00
+                                            pos es pos mas 1
+                                            code[pos] es 0x00
+                                            pos es pos mas 1
+                                            code[pos] es 0x0F
+                                            pos es pos mas 1
+                                            code[pos] es 0x05
                                             pos es pos mas 1
                                         sino
                                             si is_alpha(c) es_igual 1 entonces
@@ -1635,6 +1748,35 @@ parcero principal() devuelve numero
                                             listo
                                         listo
                                     listo
+                                    ; Emit return epilogue for variable/expression devuelvase
+                                    code[pos] es 0x48
+                                    pos es pos mas 1
+                                    code[pos] es 0x89
+                                    pos es pos mas 1
+                                    code[pos] es 0xEC
+                                    pos es pos mas 1
+                                    code[pos] es 0x5D
+                                    pos es pos mas 1
+                                    code[pos] es 0x48
+                                    pos es pos mas 1
+                                    code[pos] es 0x89
+                                    pos es pos mas 1
+                                    code[pos] es 0xC7
+                                    pos es pos mas 1
+                                    code[pos] es 0xB8
+                                    pos es pos mas 1
+                                    code[pos] es 0x3C
+                                    pos es pos mas 1
+                                    code[pos] es 0x00
+                                    pos es pos mas 1
+                                    code[pos] es 0x00
+                                    pos es pos mas 1
+                                    code[pos] es 0x00
+                                    pos es pos mas 1
+                                    code[pos] es 0x0F
+                                    pos es pos mas 1
+                                    code[pos] es 0x05
+                                    pos es pos mas 1
                                 listo
                             listo
                         listo
@@ -1944,6 +2086,30 @@ parcero principal() devuelve numero
                                         listo
                                     listo
                                 listo
+                                ; mayor_igual = 109,97,121,111,114,95,105,103,117,97,108 (11 chars)
+                                si len es_igual 11 y buf[0] es_igual 109 y buf[1] es_igual 97 entonces
+                                    si buf[2] es_igual 121 y buf[3] es_igual 111 entonces
+                                        si buf[4] es_igual 114 y buf[5] es_igual 95 entonces
+                                            si buf[6] es_igual 105 y buf[7] es_igual 103 entonces
+                                                si buf[8] es_igual 117 y buf[9] es_igual 97 y buf[10] es_igual 108 entonces
+                                                    op es 8
+                                                listo
+                                            listo
+                                        listo
+                                    listo
+                                listo
+                                ; menor_igual = 109,101,110,111,114,95,105,103,117,97,108 (11 chars)
+                                si len es_igual 11 y buf[0] es_igual 109 y buf[1] es_igual 101 entonces
+                                    si buf[2] es_igual 110 y buf[3] es_igual 111 entonces
+                                        si buf[4] es_igual 114 y buf[5] es_igual 95 entonces
+                                            si buf[6] es_igual 105 y buf[7] es_igual 103 entonces
+                                                si buf[8] es_igual 117 y buf[9] es_igual 97 y buf[10] es_igual 108 entonces
+                                                    op es 9
+                                                listo
+                                            listo
+                                        listo
+                                    listo
+                                listo
                                 si op es_mayor 0 entonces
                                     ; push rax
                                     code[pos] es 0x50
@@ -2162,6 +2328,56 @@ parcero principal() devuelve numero
                                         code[pos] es 0x0F
                                         pos es pos mas 1
                                         code[pos] es 0x9F
+                                        pos es pos mas 1
+                                        code[pos] es 0xC0
+                                        pos es pos mas 1
+                                        ; movzx rax, al
+                                        code[pos] es 0x48
+                                        pos es pos mas 1
+                                        code[pos] es 0x0F
+                                        pos es pos mas 1
+                                        code[pos] es 0xB6
+                                        pos es pos mas 1
+                                        code[pos] es 0xC0
+                                        pos es pos mas 1
+                                    listo
+                                    si op es_igual 8 entonces
+                                        ; cmp rax, rbx
+                                        code[pos] es 0x48
+                                        pos es pos mas 1
+                                        code[pos] es 0x39
+                                        pos es pos mas 1
+                                        code[pos] es 0xD8
+                                        pos es pos mas 1
+                                        ; setge al
+                                        code[pos] es 0x0F
+                                        pos es pos mas 1
+                                        code[pos] es 0x9D
+                                        pos es pos mas 1
+                                        code[pos] es 0xC0
+                                        pos es pos mas 1
+                                        ; movzx rax, al
+                                        code[pos] es 0x48
+                                        pos es pos mas 1
+                                        code[pos] es 0x0F
+                                        pos es pos mas 1
+                                        code[pos] es 0xB6
+                                        pos es pos mas 1
+                                        code[pos] es 0xC0
+                                        pos es pos mas 1
+                                    listo
+                                    si op es_igual 9 entonces
+                                        ; cmp rax, rbx
+                                        code[pos] es 0x48
+                                        pos es pos mas 1
+                                        code[pos] es 0x39
+                                        pos es pos mas 1
+                                        code[pos] es 0xD8
+                                        pos es pos mas 1
+                                        ; setle al
+                                        code[pos] es 0x0F
+                                        pos es pos mas 1
+                                        code[pos] es 0x9E
                                         pos es pos mas 1
                                         code[pos] es 0xC0
                                         pos es pos mas 1
