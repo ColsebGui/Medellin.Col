@@ -604,7 +604,7 @@ parse_bloque:
     push    r12
     push    r13
     push    r14
-    sub     rsp, 512                    ; Local space for up to 64 statements
+    sub     rsp, 2048                   ; Local space for up to 256 statements
 
     ; Allocate block node
     mov     rdi, AST_BLOQUE_SIZE
@@ -617,7 +617,7 @@ parse_bloque:
     mov     qword [r12 + AST_BLOQUE_COUNT], 0
 
     ; Parse statements - use stack-local array instead of global temp_list
-    lea     r13, [rbp - 32 - 512]       ; Point to local array
+    lea     r13, [rbp - 32 - 2048]      ; Point to local array
     xor     r14, r14
 
 .stmt_loop:
@@ -682,7 +682,7 @@ parse_bloque:
     xor     rax, rax
 
 .return:
-    add     rsp, 512                    ; Deallocate local array
+    add     rsp, 2048                   ; Deallocate local array
     pop     r14
     pop     r13
     pop     r12
